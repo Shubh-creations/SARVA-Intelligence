@@ -1,0 +1,44 @@
+name: Backend CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: financeos
+          POSTGRES_USER: financeos
+          POSTGRES_PASSWORD: financeos
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U financeos -d financeos" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: [6379:6379]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      APP_ENV: testing
+      DATABASE_URL: postgresql+asyncpg://financeos:financeos@localhost:5432/financeos
+      REDIS_URL: redis://localhost:6379/15
+      ALLOWED_HOSTS: testserver,localhost
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: abatilo/actions-poetry@v3
+      - run: poetry install
+      - run: poetry run ruff check .
+      - run: poetry run black --check .
+      - run: poetry run mypy app
+      - run: poetry run pytest
+      - run: poetry run alembic upgrade head
+      - run: docker build -t financeos-backend:ci .
