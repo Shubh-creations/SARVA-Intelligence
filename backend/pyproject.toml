@@ -6,7 +6,7 @@ authors = ["FinanceOS Engineering <engineering@financeos.example>"]
 packages = [{ include = "app" }]
 
 [tool.poetry.dependencies]
-python = "^3.13"
+python = ">=3.11,<4.0"
 fastapi = "^0.115.6"
 uvicorn = { extras = ["standard"], version = "^0.34.0" }
 sqlalchemy = "^2.0.36"
