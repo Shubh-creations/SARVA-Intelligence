@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: financeos-postgres-prod
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-financeos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-financeos_prod_secret_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-financeos}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./backend/app/db/migrations/001_production_rls_security.sql:/docker-entrypoint-initdb.d/001_rls.sql
+    networks:
+      - financeos-backend-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U financeos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: financeos-redis-prod
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_prod_secret_2026} --maxmemory 512mb --maxmemory-policy volatile-lru
+    networks:
+      - financeos-backend-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: financeos-backend-prod
+    environment:
+      APP_ENV: production
+      LOG_LEVEL: INFO
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-financeos}:${POSTGRES_PASSWORD:-financeos_prod_secret_2026}@postgres:5432/${POSTGRES_DB:-financeos}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_prod_secret_2026}@redis:6379/0
+      ALLOWED_HOSTS: localhost,127.0.0.1,api.financeos.example.com
+      CORS_ORIGINS: https://app.financeos.example.com
+      JWT_ISSUER: https://identity.financeos.example.com/
+      JWT_AUDIENCE: financeos-api
+      JWT_JWKS_URL: https://identity.financeos.example.com/.well-known/jwks.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - financeos-backend-net
+      - financeos-edge-net
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    container_name: financeos-frontend-prod
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - financeos-edge-net
+    restart: always
+
+networks:
+  financeos-backend-net:
+    driver: bridge
+    internal: true
+  financeos-edge-net:
+    driver: bridge
+
+volumes:
+  postgres_prod_data:
