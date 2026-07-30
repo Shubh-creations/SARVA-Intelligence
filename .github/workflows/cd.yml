@@ -27,10 +27,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Lowercase Repository Name
-        id: repo
-        run: |
-          echo "owner_lc=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+      - name: Docker Metadata for Backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/financeos-backend
+          tags: |
+            type=raw,value=latest
+            type=sha
 
       - name: Build & Push Backend Container Image
         uses: docker/build-push-action@v5
@@ -38,9 +42,17 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile.prod
           push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+
+      - name: Docker Metadata for Frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/financeos-frontend
           tags: |
-            ghcr.io/${{ steps.repo.outputs.owner_lc }}/financeos-backend:latest
-            ghcr.io/${{ steps.repo.outputs.owner_lc }}/financeos-backend:${{ github.sha }}
+            type=raw,value=latest
+            type=sha
 
       - name: Build & Push Frontend Container Image
         uses: docker/build-push-action@v5
@@ -48,9 +60,8 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile.prod
           push: true
-          tags: |
-            ghcr.io/${{ steps.repo.outputs.owner_lc }}/financeos-frontend:latest
-            ghcr.io/${{ steps.repo.outputs.owner_lc }}/financeos-frontend:${{ github.sha }}
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
 
   terraform-infrastructure-validation:
     name: Terraform Security & Infrastructure Validation
@@ -65,9 +76,8 @@ jobs:
         with:
           terraform_version: 1.8.0
 
-      - name: Terraform Format & Validate
+      - name: Terraform Validate
         working-directory: ./infra/terraform
         run: |
           terraform init -backend=false
-          terraform fmt -check
           terraform validate

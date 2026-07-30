@@ -119,6 +119,9 @@ function DashboardApp() {
           <a className={activeTab === 'graph' ? 'active' : ''} onClick={() => setActiveTab('graph')}>
             <Layers size={18} /> Knowledge Graph
           </a>
+          <a className={activeTab === 'compliance' ? 'active' : ''} onClick={() => setActiveTab('compliance')}>
+            <ShieldCheck size={18} /> AML & Compliance
+          </a>
         </nav>
 
         <div className="org">

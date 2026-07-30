@@ -1,8 +1,10 @@
 from fastapi import APIRouter
 
+from app.api.v1.advanced_fintech import router as advanced_fintech_router
 from app.api.v1.ap_agent import router as ap_agent_router
 from app.api.v1.ar_agent import router as ar_agent_router
 from app.api.v1.cfo_copilot import router as cfo_copilot_router
+from app.api.v1.compliance import router as compliance_router
 from app.api.v1.connectors import router as connectors_router
 from app.api.v1.forecasting import router as forecasting_router
 from app.api.v1.health import router as health_router
@@ -28,3 +30,6 @@ router.include_router(procurement_router)
 router.include_router(knowledge_graph_router)
 router.include_router(cfo_copilot_router)
 router.include_router(recommendations_router)
+router.include_router(compliance_router)
+router.include_router(advanced_fintech_router)
+
