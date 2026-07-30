@@ -507,7 +507,7 @@ function DashboardApp() {
               <Layers size={48} color="#6366f1" style={{ marginBottom: '12px' }} />
               <h3>11 Node Types · 10 Edge Types Registered</h3>
               <p style={{ color: '#9ca3af', maxWidth: '600px', margin: '8px auto 0', fontSize: '14px' }}>
-                Graph-RAG topological context packaging active. Linking Acme Corp --[CONTRACT_TERMS]--> PO-2026-881 --[INVOICED_BY]--> Invoice #INV-9912.
+                Graph-RAG topological context packaging active. Linking Acme Corp --[CONTRACT_TERMS]--&gt; PO-2026-881 --[INVOICED_BY]--&gt; Invoice #INV-9912.
               </p>
             </div>
           </article>
