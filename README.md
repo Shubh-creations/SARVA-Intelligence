@@ -1,2 +1,2 @@
-# SARVA-Intelligence
-"an AI finance platform with lots of modules."
+# SARVAFLOW
+"an AI finance platform with lots of agentic modules."
