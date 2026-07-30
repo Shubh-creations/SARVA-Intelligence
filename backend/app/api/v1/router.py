@@ -16,6 +16,8 @@ from app.api.v1.recommendations import router as recommendations_router
 from app.api.v1.reconciliation import router as reconciliation_router
 from app.api.v1.treasury import router as treasury_router
 
+from app.api.v1.tier1_ops import router as tier1_ops_router
+
 router = APIRouter()
 router.include_router(health_router)
 router.include_router(identity_router)
@@ -32,4 +34,6 @@ router.include_router(cfo_copilot_router)
 router.include_router(recommendations_router)
 router.include_router(compliance_router)
 router.include_router(advanced_fintech_router)
+router.include_router(tier1_ops_router)
+
 
