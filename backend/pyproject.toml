@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "financeos-backend"
+name = "sarvaflow-backend"
 version = "0.1.0"
 description = "FinanceOS platform API foundation"
 authors = ["FinanceOS Engineering <engineering@financeos.example>"]

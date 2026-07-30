@@ -13,7 +13,7 @@ class FinanceOSMobileApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AI Finance OS Mobile',
+      title: 'SarvaFlow Mobile',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF07090E),
