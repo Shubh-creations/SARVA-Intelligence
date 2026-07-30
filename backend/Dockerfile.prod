@@ -13,7 +13,7 @@ COPY . /app
 RUN pip install --no-cache-dir --prefix=/install .
 
 # Stage 2: Distroless Production Execution
-FROM gcr.io/distroless/python3-debless:nonroot
+FROM gcr.io/distroless/python3-debian12:nonroot
 WORKDIR /app
 
 COPY --from=builder /install /usr/local
