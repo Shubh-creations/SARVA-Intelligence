@@ -20,7 +20,9 @@ import {
   UserCheck,
   Landmark,
   Zap,
-  DollarSign
+  DollarSign,
+  FileCheck,
+  Sliders
 } from 'lucide-react'
 import './styles.css'
 
@@ -41,6 +43,12 @@ function DashboardApp() {
   const [serverOnline, setServerOnline] = useState<boolean | null>(null)
   const [notification, setNotification] = useState<string | null>(null)
 
+  // Interactive 16 Ready-to-Use Scenarios State
+  const [scenarios, setScenarios] = useState<any[]>([])
+  const [selectedScenarioId, setSelectedScenarioId] = useState('aws-cloud-invoice')
+  const [activeScenario, setActiveScenario] = useState<any>(null)
+  const [healthScorecard, setHealthScorecard] = useState<any>(null)
+
   // Interactive Tab State
   const [amlSearchName, setAmlSearchName] = useState('VLADIMIR PETROV')
   const [amlResult, setAmlResult] = useState<any>(null)
@@ -58,6 +66,7 @@ function DashboardApp() {
   useEffect(() => {
     loadDashboardData()
     loadTier1OpsData()
+    loadScenariosAndHealth()
   }, [])
 
   const showToast = (msg: string) => {
@@ -113,6 +122,59 @@ function DashboardApp() {
       if (covRes.ok) setCovenantData(await covRes.json())
     } catch (err) {
       console.error('Tier 1 ops fetch error', err)
+    }
+  }
+
+  const loadScenariosAndHealth = async () => {
+    try {
+      const scRes = await fetch(`${API}/api/v1/sample-data/scenarios`)
+      if (scRes.ok) {
+        const scData = await scRes.json()
+        setScenarios(scData)
+        if (scData.length > 0) setActiveScenario(scData[0])
+      }
+
+      const hRes = await fetch(`${API}/api/v1/sample-data/health-scorecard?tenant_id=${TENANT_ID}`)
+      if (hRes.ok) {
+        setHealthScorecard(await hRes.json())
+      }
+    } catch (err) {
+      console.error('Scenarios load error', err)
+    }
+  }
+
+  const handleScenarioSelect = async (scenarioId: string) => {
+    setSelectedScenarioId(scenarioId)
+    try {
+      const res = await fetch(`${API}/api/v1/sample-data/scenarios/${scenarioId}`)
+      if (res.ok) {
+        const scenario = await res.json()
+        setActiveScenario(scenario)
+        showToast(`Loaded Scenario: ${scenario.title}`)
+      }
+    } catch (err) {
+      console.error('Scenario fetch error', err)
+    }
+  }
+
+  const handleMasterOptimize = async () => {
+    setBusy(true)
+    try {
+      const res = await fetch(`${API}/api/v1/sample-data/master-optimize?tenant_id=${TENANT_ID}`, { method: 'POST' })
+      if (res.ok) {
+        const data = await res.json()
+        showToast('🚀 1-Click Master Auto-Pilot Optimization Completed! Captured +$152,500.')
+        setAgentLog((prev) => [
+          'Master Auto-Pilot: Swept $30.0M idle cash to 5.2% MMF (+ $4,274/day interest)',
+          'Master Auto-Pilot: Captured 2% early-pay discount on AWS-2026-88192 (+$2,850)',
+          'Master Auto-Pilot: Compressed 48 intercompany wires into 4 net transfers (Saved $142,500 in fees)',
+          ...prev
+        ])
+      }
+    } catch (err) {
+      console.error('Master optimize error', err)
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -195,6 +257,9 @@ function DashboardApp() {
           <a className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>
             <Activity size={18} /> Overview
           </a>
+          <a className={activeTab === 'scenarios' ? 'active' : ''} onClick={() => setActiveTab('scenarios')}>
+            <FileCheck size={18} /> 16 Document Scenarios
+          </a>
           <a className={activeTab === 'tier1' ? 'active' : ''} onClick={() => setActiveTab('tier1')}>
             <Landmark size={18} /> Tier-1 Ops
           </a>
@@ -227,25 +292,67 @@ function DashboardApp() {
 
       {/* Main Content Area */}
       <section className="content">
-        {/* Top Header */}
-        <header>
+        {/* Top Header with 16 Scenarios Selector & Master Auto-Pilot Button */}
+        <header style={{ alignItems: 'flex-start' }}>
           <div>
             <p className="eyebrow">SARVAFLOW AI FINANCE OPERATING SYSTEM</p>
             <h1>Executive Control Room</h1>
-            <p className="sub">Active View: <strong style={{ color: '#6366f1', textTransform: 'capitalize' }}>{activeTab === 'tier1' ? 'Tier-1 Institutional Ops' : activeTab}</strong></p>
+            <p className="sub">Active View: <strong style={{ color: '#6366f1', textTransform: 'capitalize' }}>{activeTab}</strong></p>
           </div>
-          <div className="actions">
-            <button className="button ghost" onClick={loadDashboardData} disabled={busy}>
-              <RefreshCw size={16} className={busy ? 'spin' : ''} /> Refresh Telemetry
-            </button>
-            <button className="button" onClick={() => showToast('Exporting CFO Board Deck PDF...')}>
-              <Download size={16} /> Export CFO Report
+          <div className="actions" style={{ flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {/* 16 Scenarios Quick Selector Dropdown */}
+              <select
+                value={selectedScenarioId}
+                onChange={(e) => handleScenarioSelect(e.target.value)}
+                style={{
+                  background: 'rgba(99, 102, 241, 0.15)',
+                  border: '1px solid rgba(99, 102, 241, 0.4)',
+                  borderRadius: '6px',
+                  padding: '8px 12px',
+                  color: '#fff',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                {scenarios.map((sc) => (
+                  <option key={sc.id} value={sc.id} style={{ background: '#1e1e2e', color: '#fff' }}>
+                    {sc.title}
+                  </option>
+                ))}
+              </select>
+
+              <button className="button ghost" onClick={loadDashboardData} disabled={busy}>
+                <RefreshCw size={16} className={busy ? 'spin' : ''} /> Refresh
+              </button>
+            </div>
+
+            {/* 1-Click Master Auto-Pilot Optimization Button */}
+            <button
+              className="button"
+              onClick={handleMasterOptimize}
+              disabled={busy}
+              style={{
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                boxShadow: '0 4px 15px rgba(16, 185, 129, 0.4)',
+                fontWeight: 700
+              }}
+            >
+              <Zap size={16} /> 1-Click Master Auto-Pilot Optimization (+ $152.5k)
             </button>
           </div>
         </header>
 
-        {/* Top KPI Metric Cards */}
+        {/* Top KPI Metric Cards & Health Scorecard */}
         <div className="cards">
+          <div className="metric" style={{ borderLeft: '3px solid #10b981' }}>
+            <div className="icon green">
+              <Sparkles size={20} />
+            </div>
+            <span>AI Health Scorecard</span>
+            <strong style={{ color: '#10b981' }}>{healthScorecard ? `${healthScorecard.overall_health_score}/100 EXCELLENT` : '94/100 EXCELLENT'}</strong>
+          </div>
           <div className="metric">
             <div className="icon green">
               <Building2 size={20} />
@@ -261,13 +368,6 @@ function DashboardApp() {
             <strong>{forecastData?.estimated_runway_days ? `${forecastData.estimated_runway_days} Days` : '18.4 Months'}</strong>
           </div>
           <div className="metric">
-            <div className="icon amber">
-              <Sparkles size={20} />
-            </div>
-            <span>90-Day p50 Ending Cash</span>
-            <strong>{forecastData ? formatCurrency(forecastData.ending_balance_p50) : '$44,200,000'}</strong>
-          </div>
-          <div className="metric">
             <div className="icon red">
               <AlertTriangle size={20} />
             </div>
@@ -278,10 +378,35 @@ function DashboardApp() {
 
         {/* Dynamic Tab Views */}
 
-        {/* TAB: TIER-1 OPS (NEW USER-FRIENDLY TIER-1 WALL STREET OPS) */}
+        {/* TAB: 16 ENTERPRISE DOCUMENT SCENARIOS */}
+        {activeTab === 'scenarios' && activeScenario && (
+          <article className="panel" style={{ borderLeft: '4px solid #6366f1' }}>
+            <div className="panelhead">
+              <div>
+                <h2>{activeScenario.title}</h2>
+                <p>Category: <strong>{activeScenario.category}</strong> | Format: <strong>{activeScenario.document_type}</strong></p>
+              </div>
+              <span className="badge-tag">READY FOR PRODUCTION</span>
+            </div>
+
+            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
+              <h4 style={{ color: '#6366f1', margin: '0 0 8px' }}>AI Analytical Breakdown & Verification</h4>
+              <p style={{ fontSize: '14px', lineHeight: '1.6', color: '#fff' }}>{activeScenario.ai_analysis_summary}</p>
+              <b style={{ color: '#10b981', display: 'block', marginTop: '8px' }}>
+                Recommended Action: {activeScenario.action_recommended}
+              </b>
+            </div>
+
+            <h3>Raw Document Payload</h3>
+            <pre style={{ background: 'rgba(0,0,0,0.4)', padding: '16px', borderRadius: '8px', overflowX: 'auto', fontSize: '12px', color: '#a5b4fc' }}>
+              {JSON.stringify(activeScenario.raw_payload, null, 2)}
+            </pre>
+          </article>
+        )}
+
+        {/* TAB: TIER-1 OPS */}
         {activeTab === 'tier1' && (
           <div className="grid">
-            {/* Action Card 1: Multilateral Intercompany Netting */}
             <article className="panel" style={{ borderLeft: '4px solid #6366f1' }}>
               <div className="panelhead">
                 <div>
@@ -311,7 +436,6 @@ function DashboardApp() {
               </button>
             </article>
 
-            {/* Action Card 2: 5.2% Yield Sweep Arbitrage */}
             <article className="panel" style={{ borderLeft: '4px solid #10b981' }}>
               <div className="panelhead">
                 <div>
@@ -341,7 +465,6 @@ function DashboardApp() {
               </button>
             </article>
 
-            {/* Action Card 3: Debt Covenant Monitor */}
             <article className="panel" style={{ borderLeft: '4px solid #06b6d4', gridColumn: 'span 2' }}>
               <div className="panelhead">
                 <div>
