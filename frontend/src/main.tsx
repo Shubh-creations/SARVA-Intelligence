@@ -189,6 +189,10 @@ function DashboardApp() {
   }, [])
 
   useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
+
+  useEffect(() => {
     loadDashboardData()
     loadTier1OpsData()
     loadScenariosAndHealth()
@@ -204,6 +208,7 @@ function DashboardApp() {
   const toggleTheme = () => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark'
     setTheme(nextTheme)
+    document.documentElement.setAttribute('data-theme', nextTheme)
     showToast(`Switched to ${nextTheme.toUpperCase()} theme mode.`)
     trackEvent('theme_toggle', { mode: nextTheme })
   }
@@ -727,6 +732,11 @@ function DashboardApp() {
                 style={{ fontWeight: 700 }}
               >
                 <Zap size={16} className={busy ? 'spin' : ''} /> 1-Click Master Auto-Pilot (+ $152.5k)
+              </button>
+
+              {/* Quick Theme Toggle */}
+              <button className="button ghost" onClick={toggleTheme} title="Switch Light/Dark Theme">
+                {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
               </button>
 
               {/* Direct Settings Trigger */}
