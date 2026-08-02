@@ -37,3 +37,18 @@ def test_master_optimization() -> None:
     data = response.json()
     assert data["status"] == "MASTER_OPTIMIZATION_SUCCESSFUL"
     assert len(data["executed_actions"]) == 4
+
+
+def test_ingest_custom_document() -> None:
+    payload = {
+        "file_name": "sample_invoice.csv",
+        "file_content": "Line1,100.00\nLine2,250.50\nLine3,300.00",
+        "industry_domain": "AI & Tech Giants"
+    }
+    response = client.post("/api/v1/sample-data/ingest-document", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "SUCCESS"
+    assert data["file_name"] == "sample_invoice.csv"
+    assert len(data["line_items"]) == 3
+    assert data["total_audited_usd"] == 650.50
