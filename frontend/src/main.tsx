@@ -413,6 +413,8 @@ function DashboardApp() {
     }
   }
 
+  const [confirmDisconnectConn, setConfirmDisconnectConn] = useState<any>(null)
+
   const toggleConnection = async (connId: string) => {
     try {
       const res = await fetch(`${API}/api/v1/settings/connections/${connId}/toggle`, { method: 'POST' })
@@ -420,10 +422,19 @@ function DashboardApp() {
         const data = await res.json()
         setConnections((prev) => prev.map((c) => (c.id === connId ? data.connection : c)))
         showToast(`Connection status updated: ${data.connection.status}`)
-        trackEvent('toggle_connection', { id: connId })
+        setConfirmDisconnectConn(null)
+        trackFunnelEvent('bank_connect', { id: connId, status: data.connection.status })
       }
     } catch (err) {
       console.error('Connection toggle error', err)
+    }
+  }
+
+  const handleDisconnectClick = (conn: any) => {
+    if (conn.status === 'CONNECTED') {
+      setConfirmDisconnectConn(conn)
+    } else {
+      toggleConnection(conn.id)
     }
   }
 
@@ -439,7 +450,7 @@ function DashboardApp() {
         a.download = `sarvaflow-export-${TENANT_ID.slice(0, 8)}.json`
         a.click()
         showToast('Downloaded SarvaFlow tenant data export.')
-        trackEvent('export_user_data')
+        trackFunnelEvent('export_clicked', { type: 'tenant_data_json' })
       }
     } catch (err) {
       console.error('Data export error', err)
@@ -486,8 +497,20 @@ function DashboardApp() {
     showToast(`Executed Action: "${title}" (+${formatCurrency(savings)} captured)`)
   }
 
-  const triggerAgentRun = (agentName: string) => {
-    showToast(`Triggered ReAct cycle for ${agentName}`)
+  const triggerAgentRun = async (agentName: string) => {
+    setAgentMeshList(prev => prev.map(a => a.name === agentName ? { ...a, status: 'RUNNING...' } : a))
+    try {
+      const res = await fetch(`${API}/api/v1/sample-data/trigger-agent?agent_name=${encodeURIComponent(agentName)}`, { method: 'POST' })
+      if (res.ok) {
+        const data = await res.json()
+        setAgentMeshList(prev => prev.map(a => a.name === agentName ? { ...a, status: 'COMPLETED', detail: data.detail } : a))
+        showToast(`✓ Server ReAct Cycle Completed for ${agentName} (${data.execution_time_ms}ms)`)
+      } else {
+        setAgentMeshList(prev => prev.map(a => a.name === agentName ? { ...a, status: 'FAILED' } : a))
+      }
+    } catch (e) {
+      setAgentMeshList(prev => prev.map(a => a.name === agentName ? { ...a, status: 'FAILED' } : a))
+    }
   }
 
   const filteredScenarios = scenarioFilterCategory === 'ALL'
@@ -618,18 +641,18 @@ function DashboardApp() {
           </div>
         )}
 
-        {/* Delete Account Modal */}
-        {showDeleteModal && (
+        {/* Confirm Disconnect Modal */}
+        {confirmDisconnectConn && (
           <div className="modal-overlay">
-            <div className="modal-card" style={{ borderLeft: '4px solid #ef4444' }}>
-              <h3>⚠️ Delete Tenant Account</h3>
+            <div className="modal-card" style={{ borderLeft: '4px solid #f59e0b' }}>
+              <h3>⚠️ Disconnect Integration</h3>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                Are you sure you want to permanently delete your tenant data? This action cannot be undone.
+                Are you sure you want to disconnect <strong>{confirmDisconnectConn.provider} ({confirmDisconnectConn.account_name})</strong>? Automated transaction sync will be paused.
               </p>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
-                <button className="button ghost" onClick={() => setShowDeleteModal(false)}>Cancel</button>
-                <button className="button" style={{ background: '#ef4444' }} onClick={() => { showToast('Account deletion request submitted.'); setShowDeleteModal(false); }}>
-                  Confirm Delete
+                <button className="button ghost" onClick={() => setConfirmDisconnectConn(null)}>Cancel</button>
+                <button className="button" style={{ background: '#f59e0b' }} onClick={() => toggleConnection(confirmDisconnectConn.id)}>
+                  Confirm Disconnect
                 </button>
               </div>
             </div>
@@ -1297,7 +1320,7 @@ function DashboardApp() {
                           Status: <span style={{ color: conn.status === 'CONNECTED' ? '#10b981' : '#ef4444' }}>● {conn.status}</span> | Last Sync: {conn.last_sync}
                         </p>
                       </div>
-                      <button className="button ghost" style={{ fontSize: '11px' }} onClick={() => toggleConnection(conn.id)}>
+                      <button className="button ghost" style={{ fontSize: '11px' }} onClick={() => handleDisconnectClick(conn)}>
                         {conn.status === 'CONNECTED' ? 'Disconnect' : 'Reconnect'}
                       </button>
                     </div>
