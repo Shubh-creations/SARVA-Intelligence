@@ -15,6 +15,7 @@ from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.core.redis import RedisClient
 from app.db.session import Database
+from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.request_context import RequestContextMiddleware, install_exception_handlers
 from app.middleware.security_headers import ProductionSecurityHeadersMiddleware
 
@@ -35,6 +36,7 @@ def create_app() -> FastAPI:
         logger.info("application_stopped")
 
     app = FastAPI(title="FinanceOS API", version="0.1.0", openapi_url="/api/v1/openapi.json", lifespan=lifespan)
+    app.add_middleware(RateLimitMiddleware, requests_per_minute=120)
     app.add_middleware(ProductionSecurityHeadersMiddleware)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts)
     app.add_middleware(GZipMiddleware, minimum_size=1024)
@@ -45,5 +47,5 @@ def create_app() -> FastAPI:
     return app
 
 
-
 app = create_app()
+

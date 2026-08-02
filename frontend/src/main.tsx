@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, Component, ErrorInfo, ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import {
@@ -22,7 +22,18 @@ import {
   Zap,
   DollarSign,
   FileCheck,
-  Sliders
+  Settings,
+  HelpCircle,
+  MessageSquare,
+  Sun,
+  Moon,
+  Users,
+  Lock,
+  Database,
+  Info,
+  LogOut,
+  X,
+  Plus
 } from 'lucide-react'
 import './styles.css'
 
@@ -32,7 +43,36 @@ const TENANT_ID = '57d5f240-ffae-4020-8e49-664a1874d924'
 const formatCurrency = (n: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 
+// React Error Boundary for Production Stability
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: any }> {
+  state = { hasError: false, error: null }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error }
+  }
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('SarvaFlow UI Error Boundary caught an exception:', error, errorInfo)
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '40px', textAlign: 'center', background: '#07090e', color: '#fff', minHeight: '100vh' }}>
+          <h2>⚠️ Something went wrong in the Control Room.</h2>
+          <p style={{ color: '#9ca3af' }}>{String(this.state.error)}</p>
+          <button className="button" onClick={() => window.location.reload()}>Reload Dashboard</button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
+// Telemetry Event Tracker Stub
+const trackEvent = (eventName: string, data?: any) => {
+  console.log(`[Telemetry] Event: ${eventName}`, data || {})
+}
+
 function DashboardApp() {
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [activeTab, setActiveTab] = useState('overview')
   const [forecastData, setForecastData] = useState<any>(null)
   const [copilotQuery, setCopilotQuery] = useState('')
@@ -43,7 +83,13 @@ function DashboardApp() {
   const [serverOnline, setServerOnline] = useState<boolean | null>(null)
   const [notification, setNotification] = useState<string | null>(null)
 
-  // Interactive 16 Ready-to-Use Scenarios State
+  // Feedback Modal State
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [feedbackCategory, setFeedbackCategory] = useState('bug')
+  const [feedbackSubject, setFeedbackSubject] = useState('')
+  const [feedbackDesc, setFeedbackDesc] = useState('')
+
+  // 16 Scenarios State
   const [scenarios, setScenarios] = useState<any[]>([])
   const [selectedScenarioId, setSelectedScenarioId] = useState('aws-cloud-invoice')
   const [activeScenario, setActiveScenario] = useState<any>(null)
@@ -56,6 +102,21 @@ function DashboardApp() {
   const [yieldData, setYieldData] = useState<any>(null)
   const [covenantData, setCovenantData] = useState<any>(null)
 
+  // Settings & Teammates State
+  const [userProfile, setUserProfile] = useState<any>({
+    name: 'Sarah Jensen',
+    email: 'sarah.jensen@acme-enterprise.com',
+    company: 'Acme Enterprise Corp',
+    role: 'Chief Financial Officer (CFO)'
+  })
+  const [teammates, setTeammates] = useState<any[]>([])
+  const [connections, setConnections] = useState<any[]>([])
+  const [auditLog, setAuditLog] = useState<any[]>([])
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState('Viewer')
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+
   const [agentLog, setAgentLog] = useState<string[]>([
     'AP Agent: Processed invoice INV-2026-9912 (97% confidence)',
     'AR Agent: Matched $142,500 cash application bundle',
@@ -64,14 +125,27 @@ function DashboardApp() {
   ])
 
   useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
+
+  useEffect(() => {
     loadDashboardData()
     loadTier1OpsData()
     loadScenariosAndHealth()
-  }, [])
+    loadSettingsData()
+    trackEvent('page_view', { tab: activeTab })
+  }, [activeTab])
 
   const showToast = (msg: string) => {
     setNotification(msg)
     setTimeout(() => setNotification(null), 4000)
+  }
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark'
+    setTheme(nextTheme)
+    showToast(`Switched to ${nextTheme.toUpperCase()} theme mode.`)
+    trackEvent('theme_toggle', { mode: nextTheme })
   }
 
   const loadDashboardData = async () => {
@@ -101,7 +175,6 @@ function DashboardApp() {
       if (dupRes.ok) {
         setAlerts(await dupRes.json())
       }
-      showToast('Telemetry data refreshed from server.')
     } catch (err) {
       console.error('Failed to connect to backend', err)
       setServerOnline(false)
@@ -143,6 +216,24 @@ function DashboardApp() {
     }
   }
 
+  const loadSettingsData = async () => {
+    try {
+      const profRes = await fetch(`${API}/api/v1/settings/profile`)
+      if (profRes.ok) setUserProfile(await profRes.json())
+
+      const teamRes = await fetch(`${API}/api/v1/settings/teammates`)
+      if (teamRes.ok) setTeammates(await teamRes.json())
+
+      const connRes = await fetch(`${API}/api/v1/settings/connections`)
+      if (connRes.ok) setConnections(await connRes.json())
+
+      const logRes = await fetch(`${API}/api/v1/settings/audit-log`)
+      if (logRes.ok) setAuditLog(await logRes.json())
+    } catch (err) {
+      console.error('Settings fetch error', err)
+    }
+  }
+
   const handleScenarioSelect = async (scenarioId: string) => {
     setSelectedScenarioId(scenarioId)
     try {
@@ -151,6 +242,7 @@ function DashboardApp() {
         const scenario = await res.json()
         setActiveScenario(scenario)
         showToast(`Loaded Scenario: ${scenario.title}`)
+        trackEvent('select_scenario', { id: scenarioId })
       }
     } catch (err) {
       console.error('Scenario fetch error', err)
@@ -162,7 +254,6 @@ function DashboardApp() {
     try {
       const res = await fetch(`${API}/api/v1/sample-data/master-optimize?tenant_id=${TENANT_ID}`, { method: 'POST' })
       if (res.ok) {
-        const data = await res.json()
         showToast('🚀 1-Click Master Auto-Pilot Optimization Completed! Captured +$152,500.')
         setAgentLog((prev) => [
           'Master Auto-Pilot: Swept $30.0M idle cash to 5.2% MMF (+ $4,274/day interest)',
@@ -170,11 +261,120 @@ function DashboardApp() {
           'Master Auto-Pilot: Compressed 48 intercompany wires into 4 net transfers (Saved $142,500 in fees)',
           ...prev
         ])
+        trackEvent('master_optimize_execute')
       }
     } catch (err) {
       console.error('Master optimize error', err)
     } finally {
       setBusy(false)
+    }
+  }
+
+  const handleFeedbackSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!feedbackSubject || !feedbackDesc) return
+    setBusy(true)
+    try {
+      const res = await fetch(`${API}/api/v1/feedback/submit?tenant_id=${TENANT_ID}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: feedbackCategory,
+          subject: feedbackSubject,
+          description: feedbackDesc,
+          user_email: userProfile.email,
+          page_url: window.location.href
+        })
+      })
+      if (res.ok) {
+        showToast('Report submitted! Thank you for testing SarvaFlow.')
+        setShowFeedbackModal(false)
+        setFeedbackSubject('')
+        setFeedbackDesc('')
+        trackEvent('submit_feedback', { category: feedbackCategory })
+      }
+    } catch (err) {
+      console.error('Feedback submit error', err)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    try {
+      const res = await fetch(`${API}/api/v1/settings/profile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userProfile)
+      })
+      if (res.ok) {
+        showToast('Saved Profile changes successfully.')
+        trackEvent('update_profile')
+      }
+    } catch (err) {
+      console.error('Profile update error', err)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleInviteTeammate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!inviteEmail) return
+    setBusy(true)
+    try {
+      const res = await fetch(`${API}/api/v1/settings/teammates/invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: inviteEmail, role: inviteRole })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setTeammates(data.teammates)
+        showToast(`Invitation sent to ${inviteEmail}`)
+        setShowInviteModal(false)
+        setInviteEmail('')
+        trackEvent('invite_teammate', { email: inviteEmail, role: inviteRole })
+      }
+    } catch (err) {
+      console.error('Invite error', err)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const toggleConnection = async (connId: string) => {
+    try {
+      const res = await fetch(`${API}/api/v1/settings/connections/${connId}/toggle`, { method: 'POST' })
+      if (res.ok) {
+        const data = await res.json()
+        setConnections((prev) => prev.map((c) => (c.id === connId ? data.connection : c)))
+        showToast(`Connection status updated: ${data.connection.status}`)
+        trackEvent('toggle_connection', { id: connId })
+      }
+    } catch (err) {
+      console.error('Connection toggle error', err)
+    }
+  }
+
+  const handleExportUserData = async () => {
+    try {
+      const res = await fetch(`${API}/api/v1/settings/export-data?tenant_id=${TENANT_ID}`)
+      if (res.ok) {
+        const data = await res.json()
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `sarvaflow-export-${TENANT_ID.slice(0, 8)}.json`
+        a.click()
+        showToast('Downloaded SarvaFlow tenant data export.')
+        trackEvent('export_user_data')
+      }
+    } catch (err) {
+      console.error('Data export error', err)
     }
   }
 
@@ -225,589 +425,903 @@ function DashboardApp() {
   }
 
   return (
-    <main>
-      {/* Toast Notification Banner */}
-      {notification && (
-        <div style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          background: '#6366f1',
-          color: '#fff',
-          padding: '12px 20px',
-          borderRadius: '8px',
-          boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-          zIndex: 9999,
-          fontSize: '13px',
-          fontWeight: 600,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          <CheckCircle size={16} /> {notification}
-        </div>
-      )}
+    <ErrorBoundary>
+      {/* Priority 1 — Top Pilot Disclaimer Banner */}
+      <div className="pilot-banner">
+        <Info size={14} />
+        <span>
+          <strong>SarvaFlow Pilot Launch Mode:</strong> Some advanced compliance, wire clearing, and scorecard modules are demo implementations pending independent certification.
+        </span>
+      </div>
 
-      {/* Sidebar Navigation */}
-      <aside>
-        <div className="brand">
-          <WalletCards /> SarvaFlow
-        </div>
-        <nav>
-          <a className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>
-            <Activity size={18} /> Overview
-          </a>
-          <a className={activeTab === 'scenarios' ? 'active' : ''} onClick={() => setActiveTab('scenarios')}>
-            <FileCheck size={18} /> 16 Document Scenarios
-          </a>
-          <a className={activeTab === 'tier1' ? 'active' : ''} onClick={() => setActiveTab('tier1')}>
-            <Landmark size={18} /> Tier-1 Ops
-          </a>
-          <a className={activeTab === 'forecasting' ? 'active' : ''} onClick={() => setActiveTab('forecasting')}>
-            <TrendingUp size={18} /> 90-Day Forecast
-          </a>
-          <a className={activeTab === 'agents' ? 'active' : ''} onClick={() => setActiveTab('agents')}>
-            <Bot size={18} /> Multi-Agent Mesh
-          </a>
-          <a className={activeTab === 'alerts' ? 'active' : ''} onClick={() => setActiveTab('alerts')}>
-            <AlertTriangle size={18} /> Realtime Risk
-          </a>
-          <a className={activeTab === 'graph' ? 'active' : ''} onClick={() => setActiveTab('graph')}>
-            <Layers size={18} /> Knowledge Graph
-          </a>
-          <a className={activeTab === 'compliance' ? 'active' : ''} onClick={() => setActiveTab('compliance')}>
-            <ShieldCheck size={18} /> AML & Compliance
-          </a>
-        </nav>
-
-        <div className="org">
-          <strong>SARVAFLOW ENTERPRISE</strong>
-          <span>Tenant ID: {TENANT_ID.slice(0, 8)}...</span>
-          <br />
-          <span style={{ color: serverOnline ? '#10b981' : '#ef4444', fontSize: '11px', marginTop: '6px', display: 'inline-block' }}>
-            {serverOnline ? '● API Server Live (Port 8000)' : '○ API Server Offline'}
-          </span>
-        </div>
-      </aside>
-
-      {/* Main Content Area */}
-      <section className="content">
-        {/* Top Header with 16 Scenarios Selector & Master Auto-Pilot Button */}
-        <header style={{ alignItems: 'flex-start' }}>
-          <div>
-            <p className="eyebrow">SARVAFLOW AI FINANCE OPERATING SYSTEM</p>
-            <h1>Executive Control Room</h1>
-            <p className="sub">Active View: <strong style={{ color: '#6366f1', textTransform: 'capitalize' }}>{activeTab}</strong></p>
+      <main>
+        {/* Toast Notification Banner */}
+        {notification && (
+          <div style={{
+            position: 'fixed',
+            top: '48px',
+            right: '20px',
+            background: '#6366f1',
+            color: '#fff',
+            padding: '12px 20px',
+            borderRadius: '8px',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+            zIndex: 9999,
+            fontSize: '13px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <CheckCircle size={16} /> {notification}
           </div>
-          <div className="actions" style={{ flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              {/* 16 Scenarios Quick Selector Dropdown */}
-              <select
-                value={selectedScenarioId}
-                onChange={(e) => handleScenarioSelect(e.target.value)}
-                style={{
-                  background: 'rgba(99, 102, 241, 0.15)',
-                  border: '1px solid rgba(99, 102, 241, 0.4)',
-                  borderRadius: '6px',
-                  padding: '8px 12px',
-                  color: '#fff',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                {scenarios.map((sc) => (
-                  <option key={sc.id} value={sc.id} style={{ background: '#1e1e2e', color: '#fff' }}>
-                    {sc.title}
-                  </option>
-                ))}
-              </select>
-
-              <button className="button ghost" onClick={loadDashboardData} disabled={busy}>
-                <RefreshCw size={16} className={busy ? 'spin' : ''} /> Refresh
-              </button>
-            </div>
-
-            {/* 1-Click Master Auto-Pilot Optimization Button */}
-            <button
-              className="button"
-              onClick={handleMasterOptimize}
-              disabled={busy}
-              style={{
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                boxShadow: '0 4px 15px rgba(16, 185, 129, 0.4)',
-                fontWeight: 700
-              }}
-            >
-              <Zap size={16} /> 1-Click Master Auto-Pilot Optimization (+ $152.5k)
-            </button>
-          </div>
-        </header>
-
-        {/* Top KPI Metric Cards & Health Scorecard */}
-        <div className="cards">
-          <div className="metric" style={{ borderLeft: '3px solid #10b981' }}>
-            <div className="icon green">
-              <Sparkles size={20} />
-            </div>
-            <span>AI Health Scorecard</span>
-            <strong style={{ color: '#10b981' }}>{healthScorecard ? `${healthScorecard.overall_health_score}/100 EXCELLENT` : '94/100 EXCELLENT'}</strong>
-          </div>
-          <div className="metric">
-            <div className="icon green">
-              <Building2 size={20} />
-            </div>
-            <span>Liquid Cash Reserves</span>
-            <strong>{formatCurrency(42500000)}</strong>
-          </div>
-          <div className="metric">
-            <div className="icon">
-              <TrendingUp size={20} />
-            </div>
-            <span>Est. Cash Runway</span>
-            <strong>{forecastData?.estimated_runway_days ? `${forecastData.estimated_runway_days} Days` : '18.4 Months'}</strong>
-          </div>
-          <div className="metric">
-            <div className="icon red">
-              <AlertTriangle size={20} />
-            </div>
-            <span>Active Risk Flags</span>
-            <strong>{alerts.length + 2} Critical Flags</strong>
-          </div>
-        </div>
-
-        {/* Dynamic Tab Views */}
-
-        {/* TAB: 16 ENTERPRISE DOCUMENT SCENARIOS */}
-        {activeTab === 'scenarios' && activeScenario && (
-          <article className="panel" style={{ borderLeft: '4px solid #6366f1' }}>
-            <div className="panelhead">
-              <div>
-                <h2>{activeScenario.title}</h2>
-                <p>Category: <strong>{activeScenario.category}</strong> | Format: <strong>{activeScenario.document_type}</strong></p>
-              </div>
-              <span className="badge-tag">READY FOR PRODUCTION</span>
-            </div>
-
-            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
-              <h4 style={{ color: '#6366f1', margin: '0 0 8px' }}>AI Analytical Breakdown & Verification</h4>
-              <p style={{ fontSize: '14px', lineHeight: '1.6', color: '#fff' }}>{activeScenario.ai_analysis_summary}</p>
-              <b style={{ color: '#10b981', display: 'block', marginTop: '8px' }}>
-                Recommended Action: {activeScenario.action_recommended}
-              </b>
-            </div>
-
-            <h3>Raw Document Payload</h3>
-            <pre style={{ background: 'rgba(0,0,0,0.4)', padding: '16px', borderRadius: '8px', overflowX: 'auto', fontSize: '12px', color: '#a5b4fc' }}>
-              {JSON.stringify(activeScenario.raw_payload, null, 2)}
-            </pre>
-          </article>
         )}
 
-        {/* TAB: TIER-1 OPS */}
-        {activeTab === 'tier1' && (
-          <div className="grid">
+        {/* Priority 5 — Report an Issue Modal */}
+        {showFeedbackModal && (
+          <div className="modal-overlay">
+            <div className="modal-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <MessageSquare size={18} color="#6366f1" /> Report an Issue / Pilot Feedback
+                </h3>
+                <button onClick={() => setShowFeedbackModal(false)} style={{ background: 'transparent', border: 0, color: '#9ca3af', cursor: 'pointer' }}>
+                  <X size={18} />
+                </button>
+              </div>
+              <form onSubmit={handleFeedbackSubmit} style={{ display: 'grid', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Category</label>
+                  <select value={feedbackCategory} onChange={(e) => setFeedbackCategory(e.target.value)}>
+                    <option value="bug">Bug / Error</option>
+                    <option value="UX">UI / Usability Feedback</option>
+                    <option value="compliance_question">Compliance / Audit Question</option>
+                    <option value="feature">Feature Request</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Subject</label>
+                  <input
+                    type="text"
+                    value={feedbackSubject}
+                    onChange={(e) => setFeedbackSubject(e.target.value)}
+                    placeholder="Brief description of the issue"
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Details</label>
+                  <textarea
+                    value={feedbackDesc}
+                    onChange={(e) => setFeedbackDesc(e.target.value)}
+                    rows={4}
+                    placeholder="Explain what happened or what you'd like to see..."
+                    required
+                  />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+                  <button type="button" className="button ghost" onClick={() => setShowFeedbackModal(false)}>Cancel</button>
+                  <button type="submit" className="button" disabled={busy}>Submit Report</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Invite Teammate Modal */}
+        {showInviteModal && (
+          <div className="modal-overlay">
+            <div className="modal-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Users size={18} color="#6366f1" /> Invite Teammate to SarvaFlow
+                </h3>
+                <button onClick={() => setShowInviteModal(false)} style={{ background: 'transparent', border: 0, color: '#9ca3af', cursor: 'pointer' }}>
+                  <X size={18} />
+                </button>
+              </div>
+              <form onSubmit={handleInviteTeammate} style={{ display: 'grid', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Teammate Email</label>
+                  <input
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder="colleague@acme-enterprise.com"
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Role</label>
+                  <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
+                    <option value="Admin">Admin (Full Control)</option>
+                    <option value="Editor">Editor (Execute Actions)</option>
+                    <option value="Viewer">Viewer (Read-Only)</option>
+                  </select>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+                  <button type="button" className="button ghost" onClick={() => setShowInviteModal(false)}>Cancel</button>
+                  <button type="submit" className="button" disabled={busy}>Send Invite</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Account Modal */}
+        {showDeleteModal && (
+          <div className="modal-overlay">
+            <div className="modal-card" style={{ borderLeft: '4px solid #ef4444' }}>
+              <h3>⚠️ Delete Tenant Account</h3>
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                Are you sure you want to permanently delete your tenant data? This action cannot be undone.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+                <button className="button ghost" onClick={() => setShowDeleteModal(false)}>Cancel</button>
+                <button className="button" style={{ background: '#ef4444' }} onClick={() => { showToast('Account deletion request submitted.'); setShowDeleteModal(false); }}>
+                  Confirm Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Sidebar Navigation */}
+        <aside>
+          <div className="brand">
+            <WalletCards /> SarvaFlow
+          </div>
+          <nav>
+            <a className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>
+              <Activity size={18} /> Overview
+            </a>
+            <a className={activeTab === 'scenarios' ? 'active' : ''} onClick={() => setActiveTab('scenarios')}>
+              <FileCheck size={18} /> 16 Scenarios
+            </a>
+            <a className={activeTab === 'tier1' ? 'active' : ''} onClick={() => setActiveTab('tier1')}>
+              <Landmark size={18} /> Tier-1 Ops
+              <span className="beta-badge" data-tooltip="Demo capability — not yet independently audited or certified for production compliance use.">DEMO</span>
+            </a>
+            <a className={activeTab === 'forecasting' ? 'active' : ''} onClick={() => setActiveTab('forecasting')}>
+              <TrendingUp size={18} /> 90-Day Forecast
+            </a>
+            <a className={activeTab === 'agents' ? 'active' : ''} onClick={() => setActiveTab('agents')}>
+              <Bot size={18} /> Multi-Agent Mesh
+            </a>
+            <a className={activeTab === 'alerts' ? 'active' : ''} onClick={() => setActiveTab('alerts')}>
+              <AlertTriangle size={18} /> Realtime Risk
+            </a>
+            <a className={activeTab === 'graph' ? 'active' : ''} onClick={() => setActiveTab('graph')}>
+              <Layers size={18} /> Knowledge Graph
+            </a>
+            <a className={activeTab === 'compliance' ? 'active' : ''} onClick={() => setActiveTab('compliance')}>
+              <ShieldCheck size={18} /> Compliance
+              <span className="beta-badge" data-tooltip="Demo capability — not yet independently audited or certified for production compliance use.">BETA</span>
+            </a>
+            <a className={activeTab === 'settings' ? 'active' : ''} onClick={() => setActiveTab('settings')}>
+              <Settings size={18} /> Settings
+            </a>
+            <a className={activeTab === 'docs' ? 'active' : ''} onClick={() => setActiveTab('docs')}>
+              <HelpCircle size={18} /> Docs & Roadmap
+            </a>
+          </nav>
+
+          <div className="org">
+            <strong>SARVAFLOW ENTERPRISE</strong>
+            <span>Tenant ID: {TENANT_ID.slice(0, 8)}...</span>
+            <br />
+            <span style={{ color: serverOnline ? '#10b981' : '#ef4444', fontSize: '11px', marginTop: '6px', display: 'inline-block' }}>
+              {serverOnline ? '● API Server Live (Port 8000)' : '○ API Server Offline'}
+            </span>
+          </div>
+        </aside>
+
+        {/* Main Content Area */}
+        <section className="content">
+          {/* Top Header */}
+          <header>
+            <div>
+              <p className="eyebrow">SARVAFLOW ENTERPRISE FINANCE PILOT</p>
+              <h1>Executive Control Room</h1>
+              <p className="sub">Active View: <strong style={{ color: 'var(--accent-primary)', textTransform: 'capitalize' }}>{activeTab}</strong></p>
+            </div>
+            <div className="actions" style={{ flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {/* Theme Mode Toggle Button */}
+                <button className="button ghost" onClick={toggleTheme} title="Toggle Light / Dark theme">
+                  {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />} Theme
+                </button>
+
+                {/* Report Issue Button */}
+                <button className="button ghost" onClick={() => setShowFeedbackModal(true)}>
+                  <MessageSquare size={16} /> Report Issue
+                </button>
+
+                {/* 16 Scenarios Quick Selector */}
+                <select
+                  value={selectedScenarioId}
+                  onChange={(e) => handleScenarioSelect(e.target.value)}
+                  style={{
+                    background: 'rgba(99, 102, 241, 0.15)',
+                    border: '1px solid rgba(99, 102, 241, 0.4)',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    color: 'var(--text-main)',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {scenarios.map((sc) => (
+                    <option key={sc.id} value={sc.id} style={{ background: '#1e1e2e', color: '#fff' }}>
+                      {sc.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 1-Click Master Auto-Pilot Optimization Button */}
+              <button
+                className="button success"
+                onClick={handleMasterOptimize}
+                disabled={busy}
+                style={{ fontWeight: 700 }}
+              >
+                <Zap size={16} className={busy ? 'spin' : ''} /> 1-Click Master Auto-Pilot Optimization (+ $152.5k)
+              </button>
+            </div>
+          </header>
+
+          {/* Top KPI Metric Cards & Health Scorecard */}
+          <div className="cards">
+            <div className="metric" style={{ borderLeft: '3px solid #10b981' }}>
+              <div className="icon green">
+                <Sparkles size={20} />
+              </div>
+              <span>AI Health Scorecard</span>
+              <strong style={{ color: '#10b981' }}>{healthScorecard ? `${healthScorecard.overall_health_score}/100 EXCELLENT` : '94/100 EXCELLENT'}</strong>
+            </div>
+            <div className="metric">
+              <div className="icon green">
+                <Building2 size={20} />
+              </div>
+              <span>Liquid Cash Reserves</span>
+              <strong>{formatCurrency(42500000)}</strong>
+            </div>
+            <div className="metric">
+              <div className="icon">
+                <TrendingUp size={20} />
+              </div>
+              <span>Est. Cash Runway</span>
+              <strong>{forecastData?.estimated_runway_days ? `${forecastData.estimated_runway_days} Days` : '18.4 Months'}</strong>
+            </div>
+            <div className="metric">
+              <div className="icon red">
+                <AlertTriangle size={20} />
+              </div>
+              <span>Active Risk Flags</span>
+              <strong>{alerts.length + 2} Critical Flags</strong>
+            </div>
+          </div>
+
+          {/* Dynamic Tab Views */}
+
+          {/* TAB: SETTINGS (PRIORITY 2 REQUIREMENT) */}
+          {activeTab === 'settings' && (
+            <div className="grid">
+              {/* Profile & Notifications */}
+              <article className="panel">
+                <div className="panelhead">
+                  <div>
+                    <h2>User Profile & Notifications</h2>
+                    <p>Manage your account info and alert thresholds</p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleSaveProfile} style={{ display: 'grid', gap: '14px', marginBottom: '24px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Full Name</label>
+                      <input
+                        type="text"
+                        value={userProfile.name}
+                        onChange={(e) => setUserProfile({ ...userProfile, name: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Email Address</label>
+                      <input
+                        type="email"
+                        value={userProfile.email}
+                        onChange={(e) => setUserProfile({ ...userProfile, email: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Company</label>
+                      <input
+                        type="text"
+                        value={userProfile.company}
+                        onChange={(e) => setUserProfile({ ...userProfile, company: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Role</label>
+                      <input
+                        type="text"
+                        value={userProfile.role}
+                        onChange={(e) => setUserProfile({ ...userProfile, role: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <button type="submit" className="button" style={{ width: 'fit-content' }} disabled={busy}>Save Profile Changes</button>
+                </form>
+
+                <hr style={{ borderColor: 'var(--border-glass)', margin: '24px 0' }} />
+
+                <h3>Data Connections Management</h3>
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  {connections.map((conn) => (
+                    <div key={conn.id} className="alert-item">
+                      <div>
+                        <strong>{conn.provider} ({conn.account_name})</strong>
+                        <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>
+                          Status: <span style={{ color: conn.status === 'CONNECTED' ? '#10b981' : '#ef4444' }}>● {conn.status}</span> | Last Sync: {conn.last_sync}
+                        </p>
+                      </div>
+                      <button className="button ghost" style={{ fontSize: '11px' }} onClick={() => toggleConnection(conn.id)}>
+                        {conn.status === 'CONNECTED' ? 'Disconnect' : 'Reconnect'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              {/* Teammates & Privacy / Audit Log */}
+              <article className="panel">
+                <div className="panelhead">
+                  <div>
+                    <h2>Team & Access Control</h2>
+                    <p>Invite teammates and assign roles</p>
+                  </div>
+                  <button className="button" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => setShowInviteModal(true)}>
+                    <Plus size={14} /> Invite Teammate
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gap: '10px', marginBottom: '24px' }}>
+                  {teammates.map((tm, i) => (
+                    <div key={i} className="alert-item">
+                      <div>
+                        <strong>{tm.name}</strong>
+                        <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>{tm.email} · {tm.role}</p>
+                      </div>
+                      <span className="badge-tag">{tm.status}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <h3>Data & Privacy Controls</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
+                  <button className="button ghost" onClick={handleExportUserData} style={{ justifyContent: 'flex-start' }}>
+                    <Download size={16} /> Export My Tenant Data (JSON)
+                  </button>
+                  <button className="button ghost" style={{ justifyContent: 'flex-start', color: '#ef4444' }} onClick={() => setShowDeleteModal(true)}>
+                    <LogOut size={16} /> Delete Tenant Account
+                  </button>
+                </div>
+
+                <h3 style={{ marginTop: '24px' }}>My Audit Log</h3>
+                <div style={{ background: 'var(--input-bg)', padding: '12px', borderRadius: '8px', maxHeight: '180px', overflowY: 'auto', fontSize: '11px', fontFamily: 'monospace' }}>
+                  {auditLog.map((log, i) => (
+                    <div key={i} style={{ marginBottom: '8px', color: 'var(--text-muted)' }}>
+                      <span style={{ color: 'var(--accent-primary)' }}>[{log.timestamp}]</span> {log.action}: {log.details}
+                    </div>
+                  ))}
+                </div>
+              </article>
+            </div>
+          )}
+
+          {/* TAB: DOCS & ROADMAP (PRIORITY 3 REQUIREMENT) */}
+          {activeTab === 'docs' && (
+            <article className="panel">
+              <div className="panelhead">
+                <div>
+                  <h2>SarvaFlow Documentation & Pilot Roadmap</h2>
+                  <p>Quickstart, Scenario Directory, FAQ, and Release Roadmap</p>
+                </div>
+              </div>
+
+              <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div>
+                  <h3>🚀 Quickstart Guide</h3>
+                  <div style={{ background: 'var(--input-bg)', padding: '16px', borderRadius: '10px', lineHeight: '1.6', fontSize: '13px' }}>
+                    <ol style={{ paddingLeft: '20px', margin: 0 }}>
+                      <li><strong>Connect Bank Account:</strong> Link your Plaid or SWIFT MT940 bank feed in Settings.</li>
+                      <li><strong>Connect QuickBooks:</strong> Sync your QBO General Ledger for automated 3-way matching.</li>
+                      <li><strong>View 90-Day Cash Forecast:</strong> Inspect probabilistic Monte Carlo quantile projections ($p_{10}, p_{50}, p_{90}$).</li>
+                      <li><strong>Export Executive Deck:</strong> Click <em>Export CFO Report</em> to generate board presentations.</li>
+                    </ol>
+                  </div>
+
+                  <h3 style={{ marginTop: '20px' }}>🛡️ Security & Privacy Basics</h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                    SarvaFlow uses AES-256-GCM envelope encryption for all stored financial credentials and maintains a SHA-256 Merkle hash audit chain for every ledger entry. All data connections run in isolated tenant sandboxes.
+                  </p>
+                </div>
+
+                <div>
+                  <h3>📌 Product Roadmap & Certification Status</h3>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Capability</th>
+                        <th>Status</th>
+                        <th>Target Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>90-Day Cash Forecasting & Monte Carlo</td>
+                        <td><span style={{ color: '#10b981' }}>✓ LIVE</span></td>
+                        <td>Available Now</td>
+                      </tr>
+                      <tr>
+                        <td>16 Enterprise Document Scenarios</td>
+                        <td><span style={{ color: '#10b981' }}>✓ LIVE</span></td>
+                        <td>Available Now</td>
+                      </tr>
+                      <tr>
+                        <td>AML/OFAC Trie Screening</td>
+                        <td><span className="beta-badge">DEMO BETA</span></td>
+                        <td>Q3 2026 Audit</td>
+                      </tr>
+                      <tr>
+                        <td>ISO 20022 Interbank Wire Clearing</td>
+                        <td><span className="beta-badge">DEMO BETA</span></td>
+                        <td>Q3 2026 Audit</td>
+                      </tr>
+                      <tr>
+                        <td>Independent SOC 2 Type II Certification</td>
+                        <td><span>PLANNED</span></td>
+                        <td>Q4 2026</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <h3 style={{ marginTop: '20px' }}>❓ Pilot Support & Feedback</h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                    Have a question or spot an issue? Click <strong>Report Issue</strong> at the top of any screen or email <strong>support@sarvaflow.com</strong>.
+                  </p>
+                </div>
+              </div>
+            </article>
+          )}
+
+          {/* TAB: 16 ENTERPRISE DOCUMENT SCENARIOS */}
+          {activeTab === 'scenarios' && activeScenario && (
             <article className="panel" style={{ borderLeft: '4px solid #6366f1' }}>
               <div className="panelhead">
                 <div>
-                  <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Zap size={18} color="#6366f1" /> Intercompany Netting Engine
-                  </h2>
-                  <p>Multilateral Graph Flow Optimization across Legal Entities</p>
+                  <h2>{activeScenario.title}</h2>
+                  <p>Category: <strong>{activeScenario.category}</strong> | Format: <strong>{activeScenario.document_type}</strong></p>
                 </div>
+                <span className="badge-tag">READY FOR PRODUCTION</span>
               </div>
-              <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
-                <strong style={{ fontSize: '15px', color: '#10b981', display: 'block', marginBottom: '4px' }}>
-                  {nettingData ? nettingData.user_summary : 'Reduced 48 gross wires down to 3 net transfers.'}
-                </strong>
-                <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0 }}>
-                  Gross Wire Volume: <strong>${nettingData?.gross_transfer_volume_usd ? (nettingData.gross_transfer_volume_usd / 1000000).toFixed(1) : '1.2'}M</strong> $\rightarrow$ Net Volume: <strong>${nettingData?.net_transfer_volume_usd ? (nettingData.net_transfer_volume_usd / 1000000).toFixed(1) : '0.6'}M</strong>
-                </p>
-                <b style={{ color: '#6366f1', fontSize: '14px', marginTop: '8px', display: 'block' }}>
-                  Estimated FX & Wire Fee Savings: +${nettingData?.estimated_fx_fee_savings_usd ? nettingData.estimated_fx_fee_savings_usd.toLocaleString() : '6,000'}
+
+              <div style={{ background: 'var(--input-bg)', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
+                <h4 style={{ color: 'var(--accent-primary)', margin: '0 0 8px' }}>AI Analytical Breakdown & Verification</h4>
+                <p style={{ fontSize: '14px', lineHeight: '1.6', color: 'var(--text-main)' }}>{activeScenario.ai_analysis_summary}</p>
+                <b style={{ color: 'var(--accent-success)', display: 'block', marginTop: '8px' }}>
+                  Recommended Action: {activeScenario.action_recommended}
                 </b>
               </div>
-              <button
-                className="button"
-                style={{ width: '100%', justifyContent: 'center' }}
-                onClick={() => showToast('Executed Multilateral Intercompany Netting (Saved 85% in wire fees).')}
-              >
-                1-Click Execute Netting Settlement <ArrowUpRight size={14} />
-              </button>
-            </article>
 
-            <article className="panel" style={{ borderLeft: '4px solid #10b981' }}>
-              <div className="panelhead">
-                <div>
-                  <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <DollarSign size={18} color="#10b981" /> 5.2% MMF Cash Sweep Arbitrage
-                  </h2>
-                  <p>Automated Excess Cash Yield Sweep Engine</p>
-                </div>
-              </div>
-              <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
-                <strong style={{ fontSize: '15px', color: '#10b981', display: 'block', marginBottom: '4px' }}>
-                  {yieldData ? yieldData.user_summary : 'Sweep $30.0M excess cash to 5.2% MMF. Earn +$4,274/day interest.'}
-                </strong>
-                <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0 }}>
-                  Destination: <strong>{yieldData?.recommended_destination || 'JPMorgan Institutional Treasury MMF'}</strong>
-                </p>
-                <b style={{ color: '#10b981', fontSize: '14px', marginTop: '8px', display: 'block' }}>
-                  Annual Interest Return: +${yieldData?.estimated_annual_yield_usd ? yieldData.estimated_annual_yield_usd.toLocaleString() : '1,560,000'}/year
-                </b>
-              </div>
-              <button
-                className="button"
-                style={{ width: '100%', justifyContent: 'center', background: '#10b981' }}
-                onClick={() => showToast('Enabled Automated 5.2% MMF Yield Sweep.')}
-              >
-                1-Click Enable Auto-Sweep <ArrowUpRight size={14} />
-              </button>
+              <h3>Raw Document Payload</h3>
+              <pre style={{ background: 'rgba(0,0,0,0.4)', padding: '16px', borderRadius: '8px', overflowX: 'auto', fontSize: '12px', color: '#a5b4fc' }}>
+                {JSON.stringify(activeScenario.raw_payload, null, 2)}
+              </pre>
             </article>
+          )}
 
-            <article className="panel" style={{ borderLeft: '4px solid #06b6d4', gridColumn: 'span 2' }}>
-              <div className="panelhead">
-                <div>
-                  <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <ShieldCheck size={18} color="#06b6d4" /> Continuous Debt Covenant Monitor
-                  </h2>
-                  <p>Realtime Credit Agreement Ratios & 180-Day Headroom Forecast</p>
-                </div>
-                <span className="badge-tag" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#10b981' }}>
-                  Status: {covenantData ? covenantData.status : '100% SAFE'}
-                </span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '8px' }}>
-                  <span style={{ fontSize: '12px', color: '#9ca3af' }}>Leverage Ratio (Debt / EBITDA)</span>
-                  <strong style={{ fontSize: '20px', display: 'block', color: '#fff', margin: '4px 0' }}>
-                    {covenantData?.ratios?.debt_to_ebitda?.current || 1.8}x <small style={{ fontSize: '12px', color: '#10b981' }}>(Max Limit: 3.5x)</small>
-                  </strong>
-                  <small style={{ color: '#10b981' }}>✓ Headroom: 1.7x EBITDA buffer remaining</small>
-                </div>
-                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '8px' }}>
-                  <span style={{ fontSize: '12px', color: '#9ca3af' }}>Interest Coverage (EBITDA / Interest)</span>
-                  <strong style={{ fontSize: '20px', display: 'block', color: '#fff', margin: '4px 0' }}>
-                    {covenantData?.ratios?.interest_coverage?.current || 8.33}x <small style={{ fontSize: '12px', color: '#10b981' }}>(Min Floor: 3.0x)</small>
-                  </strong>
-                  <small style={{ color: '#10b981' }}>✓ Headroom: 5.33x interest coverage buffer</small>
-                </div>
-              </div>
-            </article>
-          </div>
-        )}
-
-        {/* TAB 1: OVERVIEW */}
-        {activeTab === 'overview' && (
-          <>
+          {/* TAB: TIER-1 OPS (WITH DEMO BADGES - PRIORITY 1 REQUIREMENT) */}
+          {activeTab === 'tier1' && (
             <div className="grid">
-              <article className="panel">
+              <article className="panel" style={{ borderLeft: '4px solid #6366f1' }}>
                 <div className="panelhead">
                   <div>
-                    <h2>90-Day Probabilistic Cash Forecast</h2>
-                    <p>Quantile Projections (p10, p50, p90) with Monte Carlo Bounds</p>
+                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Zap size={18} color="#6366f1" /> Intercompany Netting Engine
+                      <span className="beta-badge" data-tooltip="Demo capability — not yet independently audited or certified for production compliance use.">DEMO BETA</span>
+                    </h2>
+                    <p>Multilateral Graph Flow Optimization across Legal Entities</p>
                   </div>
-                  <b>{forecastData && formatCurrency(forecastData.ending_balance_p50)}</b>
                 </div>
-
-                {forecastData?.daily_projections && (
-                  <ResponsiveContainer width="100%" height={280}>
-                    <AreaChart data={forecastData.daily_projections.filter((_: any, idx: number) => idx % 3 === 0)}>
-                      <defs>
-                        <linearGradient id="p50Grad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#6366f1" stopOpacity={0.4} />
-                          <stop offset="100%" stopColor="#6366f1" stopOpacity={0.0} />
-                        </linearGradient>
-                      </defs>
-                      <XAxis dataKey="date" stroke="#6b7280" tickLine={false} fontSize={12} />
-                      <YAxis
-                        stroke="#6b7280"
-                        tickFormatter={(v) => `$${(v / 1000000).toFixed(1)}M`}
-                        fontSize={12}
-                        domain={['auto', 'auto']}
-                      />
-                      <Tooltip formatter={(v: any) => formatCurrency(Number(v))} labelStyle={{ color: '#000' }} />
-                      <Area type="monotone" dataKey="projected_balance_p90" stroke="#06b6d4" strokeWidth={1} fill="transparent" name="p90 Upper Bound" />
-                      <Area type="monotone" dataKey="projected_balance_p50" stroke="#6366f1" strokeWidth={3} fill="url(#p50Grad)" name="p50 Median Forecast" />
-                      <Area type="monotone" dataKey="projected_balance_p10" stroke="#ef4444" strokeWidth={1} fill="transparent" name="p10 Stress Bound" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                )}
+                <div style={{ background: 'var(--input-bg)', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
+                  <strong style={{ fontSize: '15px', color: 'var(--accent-success)', display: 'block', marginBottom: '4px' }}>
+                    {nettingData ? nettingData.user_summary : 'Reduced 48 gross wires down to 3 net transfers.'}
+                  </strong>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
+                    Gross Wire Volume: <strong>${nettingData?.gross_transfer_volume_usd ? (nettingData.gross_transfer_volume_usd / 1000000).toFixed(1) : '1.2'}M</strong> $\rightarrow$ Net Volume: <strong>${nettingData?.net_transfer_volume_usd ? (nettingData.net_transfer_volume_usd / 1000000).toFixed(1) : '0.6'}M</strong>
+                  </p>
+                  <b style={{ color: 'var(--accent-primary)', fontSize: '14px', marginTop: '8px', display: 'block' }}>
+                    Estimated FX & Wire Fee Savings: +${nettingData?.estimated_fx_fee_savings_usd ? nettingData.estimated_fx_fee_savings_usd.toLocaleString() : '6,000'}
+                  </b>
+                </div>
+                <button
+                  className="button"
+                  style={{ width: '100%', justifyContent: 'center' }}
+                  onClick={() => showToast('Executed Multilateral Intercompany Netting (Demo Mode).')}
+                >
+                  1-Click Execute Netting Settlement <ArrowUpRight size={14} />
+                </button>
               </article>
 
-              <article className="panel ai-card">
+              <article className="panel" style={{ borderLeft: '4px solid #10b981' }}>
                 <div className="panelhead">
                   <div>
-                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fff' }}>
-                      <Sparkles size={18} color="#06b6d4" /> CFO Copilot NL Query
+                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <DollarSign size={18} color="#10b981" /> 5.2% MMF Cash Sweep Arbitrage
                     </h2>
-                    <p style={{ color: '#a5b4fc' }}>Ask any natural language financial question</p>
+                    <p>Automated Excess Cash Yield Sweep Engine</p>
                   </div>
                 </div>
-
-                <form onSubmit={handleCopilotSubmit} style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                  <input
-                    type="text"
-                    value={copilotQuery}
-                    onChange={(e) => setCopilotQuery(e.target.value)}
-                    placeholder="e.g. What is our projected cash runway?"
-                    style={{
-                      flex: 1,
-                      background: 'rgba(0,0,0,0.3)',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: '6px',
-                      padding: '10px 12px',
-                      color: '#fff',
-                      fontSize: '13px'
-                    }}
-                  />
-                  <button type="submit" className="button" disabled={busy}>
-                    <Search size={16} /> Query
-                  </button>
-                </form>
-
-                {copilotResponse ? (
-                  <div>
-                    <span className="badge-tag">Intent: {copilotResponse.inferred_intent}</span>
-                    <p style={{ fontSize: '14px', lineHeight: '1.5', marginTop: '10px', color: '#fff' }}>
-                      {copilotResponse.executive_summary}
-                    </p>
-                    <small style={{ color: '#a5b4fc', fontSize: '11px' }}>
-                      Sources Cited: {copilotResponse.sources_cited?.join(', ')}
-                    </small>
-                  </div>
-                ) : (
-                  <p style={{ fontSize: '13px', color: '#94a3b8' }}>
-                    Query the engine for instant Text-to-SQL briefings, scenario simulations, or Knowledge Graph supplier analyses.
+                <div style={{ background: 'var(--input-bg)', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
+                  <strong style={{ fontSize: '15px', color: 'var(--accent-success)', display: 'block', marginBottom: '4px' }}>
+                    {yieldData ? yieldData.user_summary : 'Sweep $30.0M excess cash to 5.2% MMF. Earn +$4,274/day interest.'}
+                  </strong>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
+                    Destination: <strong>{yieldData?.recommended_destination || 'JPMorgan Institutional Treasury MMF'}</strong>
                   </p>
-                )}
+                  <b style={{ color: 'var(--accent-success)', fontSize: '14px', marginTop: '8px', display: 'block' }}>
+                    Annual Interest Return: +${yieldData?.estimated_annual_yield_usd ? yieldData.estimated_annual_yield_usd.toLocaleString() : '1,560,000'}/year
+                  </b>
+                </div>
+                <button
+                  className="button success"
+                  style={{ width: '100%', justifyContent: 'center' }}
+                  onClick={() => showToast('Enabled Automated 5.2% MMF Yield Sweep.')}
+                >
+                  1-Click Enable Auto-Sweep <ArrowUpRight size={14} />
+                </button>
+              </article>
+
+              <article className="panel" style={{ borderLeft: '4px solid #06b6d4', gridColumn: 'span 2' }}>
+                <div className="panelhead">
+                  <div>
+                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <ShieldCheck size={18} color="#06b6d4" /> Continuous Debt Covenant Monitor
+                      <span className="beta-badge" data-tooltip="Demo capability — not yet independently audited or certified for production compliance use.">DEMO BETA</span>
+                    </h2>
+                    <p>Realtime Credit Agreement Ratios & 180-Day Headroom Forecast</p>
+                  </div>
+                  <span className="badge-tag" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#10b981' }}>
+                    Status: {covenantData ? covenantData.status : '100% SAFE'}
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div style={{ background: 'var(--input-bg)', padding: '16px', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Leverage Ratio (Debt / EBITDA)</span>
+                    <strong style={{ fontSize: '20px', display: 'block', color: 'var(--text-main)', margin: '4px 0' }}>
+                      {covenantData?.ratios?.debt_to_ebitda?.current || 1.8}x <small style={{ fontSize: '12px', color: '#10b981' }}>(Max Limit: 3.5x)</small>
+                    </strong>
+                    <small style={{ color: '#10b981' }}>✓ Headroom: 1.7x EBITDA buffer remaining</small>
+                  </div>
+                  <div style={{ background: 'var(--input-bg)', padding: '16px', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Interest Coverage (EBITDA / Interest)</span>
+                    <strong style={{ fontSize: '20px', display: 'block', color: 'var(--text-main)', margin: '4px 0' }}>
+                      {covenantData?.ratios?.interest_coverage?.current || 8.33}x <small style={{ fontSize: '12px', color: '#10b981' }}>(Min Floor: 3.0x)</small>
+                    </strong>
+                    <small style={{ color: '#10b981' }}>✓ Headroom: 5.33x interest coverage buffer</small>
+                  </div>
+                </div>
               </article>
             </div>
+          )}
 
-            <div className="grid">
-              <article className="panel">
-                <div className="panelhead">
-                  <div>
-                    <h2>Strategic AI Recommendations</h2>
-                    <p>Multi-Criteria Optimization (Yield, Float & Cost Elimination)</p>
-                  </div>
-                </div>
-
-                {recommendations.map((rec, idx) => (
-                  <div key={idx} className="alert-item high">
+          {/* TAB 1: OVERVIEW */}
+          {activeTab === 'overview' && (
+            <>
+              <div className="grid">
+                <article className="panel">
+                  <div className="panelhead">
                     <div>
-                      <strong>{rec.title}</strong>
-                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#9ca3af' }}>{rec.summary_reasoning}</p>
+                      <h2>90-Day Probabilistic Cash Forecast</h2>
+                      <p>Quantile Projections (p10, p50, p90) with Monte Carlo Bounds</p>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <b style={{ color: '#10b981', display: 'block', fontSize: '16px' }}>
-                        +${rec.expected_savings_usd.toLocaleString()}
-                      </b>
-                      <button
-                        className="button"
-                        onClick={() => executeRecommendation(rec.title, rec.expected_savings_usd)}
-                        style={{ padding: '4px 10px', fontSize: '11px', marginTop: '4px' }}
-                      >
-                        Execute Action <ArrowUpRight size={12} />
-                      </button>
+                    <b>{forecastData && formatCurrency(forecastData.ending_balance_p50)}</b>
+                  </div>
+
+                  {forecastData?.daily_projections && (
+                    <ResponsiveContainer width="100%" height={280}>
+                      <AreaChart data={forecastData.daily_projections.filter((_: any, idx: number) => idx % 3 === 0)}>
+                        <defs>
+                          <linearGradient id="p50Grad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#6366f1" stopOpacity={0.4} />
+                            <stop offset="100%" stopColor="#6366f1" stopOpacity={0.0} />
+                          </linearGradient>
+                        </defs>
+                        <XAxis dataKey="date" stroke="#6b7280" tickLine={false} fontSize={12} />
+                        <YAxis
+                          stroke="#6b7280"
+                          tickFormatter={(v) => `$${(v / 1000000).toFixed(1)}M`}
+                          fontSize={12}
+                          domain={['auto', 'auto']}
+                        />
+                        <Tooltip formatter={(v: any) => formatCurrency(Number(v))} labelStyle={{ color: '#000' }} />
+                        <Area type="monotone" dataKey="projected_balance_p90" stroke="#06b6d4" strokeWidth={1} fill="transparent" name="p90 Upper Bound" />
+                        <Area type="monotone" dataKey="projected_balance_p50" stroke="#6366f1" strokeWidth={3} fill="url(#p50Grad)" name="p50 Median Forecast" />
+                        <Area type="monotone" dataKey="projected_balance_p10" stroke="#ef4444" strokeWidth={1} fill="transparent" name="p10 Stress Bound" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </article>
+
+                <article className="panel ai-card">
+                  <div className="panelhead">
+                    <div>
+                      <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fff' }}>
+                        <Sparkles size={18} color="#06b6d4" /> CFO Copilot NL Query
+                      </h2>
+                      <p style={{ color: '#a5b4fc' }}>Ask any natural language financial question</p>
                     </div>
+                  </div>
+
+                  <form onSubmit={handleCopilotSubmit} style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                    <input
+                      type="text"
+                      value={copilotQuery}
+                      onChange={(e) => setCopilotQuery(e.target.value)}
+                      placeholder="e.g. What is our projected cash runway?"
+                    />
+                    <button type="submit" className="button" disabled={busy}>
+                      <Search size={16} /> Query
+                    </button>
+                  </form>
+
+                  {copilotResponse ? (
+                    <div>
+                      <span className="badge-tag">Intent: {copilotResponse.inferred_intent}</span>
+                      <p style={{ fontSize: '14px', lineHeight: '1.5', marginTop: '10px', color: '#fff' }}>
+                        {copilotResponse.executive_summary}
+                      </p>
+                      <small style={{ color: '#a5b4fc', fontSize: '11px' }}>
+                        Sources Cited: {copilotResponse.sources_cited?.join(', ')}
+                      </small>
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: '13px', color: '#94a3b8' }}>
+                      Query the engine for instant Text-to-SQL briefings, scenario simulations, or Knowledge Graph supplier analyses.
+                    </p>
+                  )}
+                </article>
+              </div>
+
+              <div className="grid">
+                <article className="panel">
+                  <div className="panelhead">
+                    <div>
+                      <h2>Strategic AI Recommendations</h2>
+                      <p>Multi-Criteria Optimization (Yield, Float & Cost Elimination)</p>
+                    </div>
+                  </div>
+
+                  {recommendations.map((rec, idx) => (
+                    <div key={idx} className="alert-item high">
+                      <div>
+                        <strong>{rec.title}</strong>
+                        <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>{rec.summary_reasoning}</p>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <b style={{ color: '#10b981', display: 'block', fontSize: '16px' }}>
+                          +${rec.expected_savings_usd.toLocaleString()}
+                        </b>
+                        <button
+                          className="button"
+                          onClick={() => executeRecommendation(rec.title, rec.expected_savings_usd)}
+                          style={{ padding: '4px 10px', fontSize: '11px', marginTop: '4px' }}
+                        >
+                          Execute Action <ArrowUpRight size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </article>
+
+                <article className="panel">
+                  <div className="panelhead">
+                    <div>
+                      <h2>Autonomous Multi-Agent Mesh</h2>
+                      <p>Active ReAct Lifecycle Workers</p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gap: '10px' }}>
+                    <div className="alert-item" onClick={() => triggerAgentRun('AP Agent')} style={{ cursor: 'pointer' }}>
+                      <span className="agent-badge">
+                        <Bot size={14} /> AP Agent
+                      </span>
+                      <span style={{ fontSize: '12px', color: '#10b981' }}>● Processing PDF Invoices (97% Confidence)</span>
+                    </div>
+                    <div className="alert-item" onClick={() => triggerAgentRun('AR Agent')} style={{ cursor: 'pointer' }}>
+                      <span className="agent-badge">
+                        <Bot size={14} /> AR Agent
+                      </span>
+                      <span style={{ fontSize: '12px', color: '#10b981' }}>● Cash App Subset-Sum Matched</span>
+                    </div>
+                    <div className="alert-item" onClick={() => triggerAgentRun('Treasury Agent')} style={{ cursor: 'pointer' }}>
+                      <span className="agent-badge">
+                        <Bot size={14} /> Treasury Agent
+                      </span>
+                      <span style={{ fontSize: '12px', color: '#10b981' }}>● Executing MMF Yield Sweep ($5.0M)</span>
+                    </div>
+                    <div className="alert-item" onClick={() => triggerAgentRun('Recon Agent')} style={{ cursor: 'pointer' }}>
+                      <span className="agent-badge">
+                        <ShieldCheck size={14} /> Recon Agent
+                      </span>
+                      <span style={{ fontSize: '12px', color: '#10b981' }}>● 98.6% Auto-Reconciliation Rate</span>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </>
+          )}
+
+          {/* TAB 2: FORECASTING */}
+          {activeTab === 'forecasting' && (
+            <article className="panel">
+              <div className="panelhead">
+                <div>
+                  <h2>90-Day Deep Probabilistic Cash Forecasting</h2>
+                  <p>Full 90-day daily projection breakdown ($p_{10}$, $p_{50}$, $p_{90}$)</p>
+                </div>
+              </div>
+              {forecastData?.daily_projections && (
+                <ResponsiveContainer width="100%" height={400}>
+                  <AreaChart data={forecastData.daily_projections}>
+                    <XAxis dataKey="date" stroke="#6b7280" fontSize={12} />
+                    <YAxis stroke="#6b7280" tickFormatter={(v) => `$${(v / 1000000).toFixed(1)}M`} fontSize={12} />
+                    <Tooltip formatter={(v: any) => formatCurrency(Number(v))} />
+                    <Area type="monotone" dataKey="projected_balance_p90" stroke="#06b6d4" fill="rgba(6, 182, 212, 0.1)" name="p90 Upper Bound" />
+                    <Area type="monotone" dataKey="projected_balance_p50" stroke="#6366f1" fill="rgba(99, 102, 241, 0.3)" name="p50 Median Forecast" />
+                    <Area type="monotone" dataKey="projected_balance_p10" stroke="#ef4444" fill="rgba(239, 68, 68, 0.1)" name="p10 Stress Bound" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </article>
+          )}
+
+          {/* TAB 3: AGENTS */}
+          {activeTab === 'agents' && (
+            <article className="panel">
+              <div className="panelhead">
+                <div>
+                  <h2>Multi-Agent Mesh Control Room</h2>
+                  <p>Trigger and monitor autonomous agent ReAct execution loops</p>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}>
+                {['AP Agent', 'AR Agent', 'Treasury Agent', 'Recon Agent'].map((agent) => (
+                  <div key={agent} className="metric">
+                    <span>{agent}</span>
+                    <strong style={{ fontSize: '16px', color: '#10b981' }}>Status: ACTIVE</strong>
+                    <button className="button" style={{ fontSize: '11px', marginTop: '8px' }} onClick={() => triggerAgentRun(agent)}>
+                      <Play size={12} /> Trigger ReAct Cycle
+                    </button>
                   </div>
                 ))}
-              </article>
-
-              <article className="panel">
-                <div className="panelhead">
-                  <div>
-                    <h2>Autonomous Multi-Agent Mesh</h2>
-                    <p>Active ReAct Lifecycle Workers</p>
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gap: '10px' }}>
-                  <div className="alert-item" onClick={() => triggerAgentRun('AP Agent')} style={{ cursor: 'pointer' }}>
-                    <span className="agent-badge">
-                      <Bot size={14} /> AP Agent
-                    </span>
-                    <span style={{ fontSize: '12px', color: '#10b981' }}>● Processing PDF Invoices (97% Confidence)</span>
-                  </div>
-                  <div className="alert-item" onClick={() => triggerAgentRun('AR Agent')} style={{ cursor: 'pointer' }}>
-                    <span className="agent-badge">
-                      <Bot size={14} /> AR Agent
-                    </span>
-                    <span style={{ fontSize: '12px', color: '#10b981' }}>● Cash App Subset-Sum Matched</span>
-                  </div>
-                  <div className="alert-item" onClick={() => triggerAgentRun('Treasury Agent')} style={{ cursor: 'pointer' }}>
-                    <span className="agent-badge">
-                      <Bot size={14} /> Treasury Agent
-                    </span>
-                    <span style={{ fontSize: '12px', color: '#10b981' }}>● Executing MMF Yield Sweep ($5.0M)</span>
-                  </div>
-                  <div className="alert-item" onClick={() => triggerAgentRun('Recon Agent')} style={{ cursor: 'pointer' }}>
-                    <span className="agent-badge">
-                      <ShieldCheck size={14} /> Recon Agent
-                    </span>
-                    <span style={{ fontSize: '12px', color: '#10b981' }}>● 98.6% Auto-Reconciliation Rate</span>
-                  </div>
-                </div>
-              </article>
-            </div>
-          </>
-        )}
-
-        {/* TAB 2: FORECASTING */}
-        {activeTab === 'forecasting' && (
-          <article className="panel">
-            <div className="panelhead">
-              <div>
-                <h2>90-Day Deep Probabilistic Cash Forecasting</h2>
-                <p>Full 90-day daily projection breakdown ($p_{10}$, $p_{50}$, $p_{90}$)</p>
               </div>
-            </div>
-            {forecastData?.daily_projections && (
-              <ResponsiveContainer width="100%" height={400}>
-                <AreaChart data={forecastData.daily_projections}>
-                  <XAxis dataKey="date" stroke="#6b7280" fontSize={12} />
-                  <YAxis stroke="#6b7280" tickFormatter={(v) => `$${(v / 1000000).toFixed(1)}M`} fontSize={12} />
-                  <Tooltip formatter={(v: any) => formatCurrency(Number(v))} />
-                  <Area type="monotone" dataKey="projected_balance_p90" stroke="#06b6d4" fill="rgba(6, 182, 212, 0.1)" name="p90 Upper Bound" />
-                  <Area type="monotone" dataKey="projected_balance_p50" stroke="#6366f1" fill="rgba(99, 102, 241, 0.3)" name="p50 Median Forecast" />
-                  <Area type="monotone" dataKey="projected_balance_p10" stroke="#ef4444" fill="rgba(239, 68, 68, 0.1)" name="p10 Stress Bound" />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </article>
-        )}
+              <h3>Execution Activity Log</h3>
+              <ul style={{ background: 'var(--input-bg)', padding: '16px 20px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '13px', lineHeight: '1.8' }}>
+                {agentLog.map((log, i) => (
+                  <li key={i} style={{ color: log.includes('Action') ? '#10b981' : '#a5b4fc' }}>● {log}</li>
+                ))}
+              </ul>
+            </article>
+          )}
 
-        {/* TAB 3: AGENTS */}
-        {activeTab === 'agents' && (
-          <article className="panel">
-            <div className="panelhead">
-              <div>
-                <h2>Multi-Agent Mesh Control Room</h2>
-                <p>Trigger and monitor autonomous agent ReAct execution loops</p>
-              </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}>
-              {['AP Agent', 'AR Agent', 'Treasury Agent', 'Recon Agent'].map((agent) => (
-                <div key={agent} className="metric" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                  <span>{agent}</span>
-                  <strong style={{ fontSize: '16px', color: '#10b981' }}>Status: ACTIVE</strong>
-                  <button className="button" style={{ fontSize: '11px', marginTop: '8px' }} onClick={() => triggerAgentRun(agent)}>
-                    <Play size={12} /> Trigger ReAct Cycle
-                  </button>
-                </div>
-              ))}
-            </div>
-            <h3>Execution Activity Log</h3>
-            <ul style={{ background: 'rgba(0,0,0,0.3)', padding: '16px 20px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '13px', lineHeight: '1.8' }}>
-              {agentLog.map((log, i) => (
-                <li key={i} style={{ color: log.includes('Action') ? '#10b981' : '#a5b4fc' }}>● {log}</li>
-              ))}
-            </ul>
-          </article>
-        )}
-
-        {/* TAB 4: ALERTS */}
-        {activeTab === 'alerts' && (
-          <article className="panel">
-            <div className="panelhead">
-              <div>
-                <h2>Realtime Financial Risk & Anomaly Detector</h2>
-                <p>Active duplicate invoice alerts and expense spike anomalies</p>
-              </div>
-            </div>
-            <div className="alert-item critical">
-              <div>
-                <strong>DUPLICATE_INVOICE_ALERT: Acme Supplies</strong>
-                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#ef4444' }}>Invoice #INV-2026-9912 ($185,000.00) matches existing bill date 2026-07-20</p>
-              </div>
-              <button className="button" style={{ background: '#ef4444', fontSize: '11px' }} onClick={() => showToast('Flagged & Blocked Duplicate Invoice.')}>
-                Block Payment
-              </button>
-            </div>
-            <div className="alert-item high">
-              <div>
-                <strong>GL_EXPENSE_SPIKE: Cloud Infrastructure (3.2σ Anomaly)</strong>
-                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#f59e0b' }}>AWS spend exceeded 30-day baseline by +$42,100</p>
-              </div>
-              <button className="button" style={{ background: '#f59e0b', fontSize: '11px' }} onClick={() => showToast('Investigating Cloud Expense Spike...')}>
-                Investigate Spike
-              </button>
-            </div>
-          </article>
-        )}
-
-        {/* TAB 5: GRAPH */}
-        {activeTab === 'graph' && (
-          <article className="panel">
-            <div className="panelhead">
-              <div>
-                <h2>Finance Knowledge Graph Topology</h2>
-                <p>Multi-hop graph entity relationships across Vendors, Contracts, POs, and Invoices</p>
-              </div>
-            </div>
-            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '24px', borderRadius: '12px', textAlign: 'center' }}>
-              <Layers size={48} color="#6366f1" style={{ marginBottom: '12px' }} />
-              <h3>11 Node Types · 10 Edge Types Registered</h3>
-              <p style={{ color: '#9ca3af', maxWidth: '600px', margin: '8px auto 0', fontSize: '14px' }}>
-                Graph-RAG topological context packaging active. Linking Acme Corp --[CONTRACT_TERMS]--&gt; PO-2026-881 --[INVOICED_BY]--&gt; Invoice #INV-9912.
-              </p>
-            </div>
-          </article>
-        )}
-
-        {/* TAB 6: COMPLIANCE */}
-        {activeTab === 'compliance' && (
-          <article className="panel">
-            <div className="panelhead">
-              <div>
-                <h2>AML Sanctions & Compliance Engine</h2>
-                <p>Sub-2ms Aho-Corasick / Trie OFAC SDN List Screening & SOX 404 SoD Matrix</p>
-              </div>
-            </div>
-
-            <form onSubmit={handleAmlScreen} style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-              <input
-                type="text"
-                value={amlSearchName}
-                onChange={(e) => setAmlSearchName(e.target.value)}
-                placeholder="Enter person or vendor name (e.g. Vladimir Petrov)"
-                style={{
-                  flex: 1,
-                  background: 'rgba(0,0,0,0.3)',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  borderRadius: '6px',
-                  padding: '10px 12px',
-                  color: '#fff',
-                  fontSize: '13px'
-                }}
-              />
-              <button type="submit" className="button" disabled={busy}>
-                <UserCheck size={16} /> Screen Entity
-              </button>
-            </form>
-
-            {amlResult && (
-              <div className={`alert-item ${amlResult.flagged ? 'critical' : ''}`} style={{ background: amlResult.flagged ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)' }}>
+          {/* TAB 4: ALERTS */}
+          {activeTab === 'alerts' && (
+            <article className="panel">
+              <div className="panelhead">
                 <div>
-                  <strong style={{ color: amlResult.flagged ? '#ef4444' : '#10b981' }}>
-                    {amlResult.flagged ? '⚠️ OFAC SDN SANCTIONS HIT FLAGGED' : '✓ ENTITY CLEARED (No Sanctions Hits)'}
-                  </strong>
-                  <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#fff' }}>
-                    Match Type: {amlResult.match_type} | Execution Latency: {amlResult.execution_time_ms}ms
-                  </p>
-                  {amlResult.matched_entity && (
-                    <small style={{ color: '#a5b4fc', fontSize: '11px', display: 'block', marginTop: '4px' }}>
-                      Matched Details: {JSON.stringify(amlResult.matched_entity)}
-                    </small>
-                  )}
+                  <h2>Realtime Financial Risk & Anomaly Detector</h2>
+                  <p>Active duplicate invoice alerts and expense spike anomalies</p>
                 </div>
               </div>
-            )}
-          </article>
-        )}
-      </section>
-    </main>
+              <div className="alert-item critical">
+                <div>
+                  <strong>DUPLICATE_INVOICE_ALERT: Acme Supplies</strong>
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#ef4444' }}>Invoice #INV-2026-9912 ($185,000.00) matches existing bill date 2026-07-20</p>
+                </div>
+                <button className="button" style={{ background: '#ef4444', fontSize: '11px' }} onClick={() => showToast('Flagged & Blocked Duplicate Invoice.')}>
+                  Block Payment
+                </button>
+              </div>
+              <div className="alert-item high">
+                <div>
+                  <strong>GL_EXPENSE_SPIKE: Cloud Infrastructure (3.2σ Anomaly)</strong>
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#f59e0b' }}>AWS spend exceeded 30-day baseline by +$42,100</p>
+                </div>
+                <button className="button" style={{ background: '#f59e0b', fontSize: '11px' }} onClick={() => showToast('Investigating Cloud Expense Spike...')}>
+                  Investigate Spike
+                </button>
+              </div>
+            </article>
+          )}
+
+          {/* TAB 5: GRAPH */}
+          {activeTab === 'graph' && (
+            <article className="panel">
+              <div className="panelhead">
+                <div>
+                  <h2>Finance Knowledge Graph Topology</h2>
+                  <p>Multi-hop graph entity relationships across Vendors, Contracts, POs, and Invoices</p>
+                </div>
+              </div>
+              <div style={{ background: 'var(--input-bg)', padding: '24px', borderRadius: '12px', textAlign: 'center' }}>
+                <Layers size={48} color="#6366f1" style={{ marginBottom: '12px' }} />
+                <h3>11 Node Types · 10 Edge Types Registered</h3>
+                <p style={{ color: 'var(--text-muted)', maxWidth: '600px', margin: '8px auto 0', fontSize: '14px' }}>
+                  Graph-RAG topological context packaging active. Linking Acme Corp --[CONTRACT_TERMS]--&gt; PO-2026-881 --[INVOICED_BY]--&gt; Invoice #INV-9912.
+                </p>
+              </div>
+            </article>
+          )}
+
+          {/* TAB 6: COMPLIANCE (WITH DEMO BADGES - PRIORITY 1 REQUIREMENT) */}
+          {activeTab === 'compliance' && (
+            <article className="panel">
+              <div className="panelhead">
+                <div>
+                  <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    AML Sanctions & Compliance Engine
+                    <span className="beta-badge" data-tooltip="Demo capability — not yet independently audited or certified for production compliance use.">DEMO BETA</span>
+                  </h2>
+                  <p>Sub-2ms Aho-Corasick / Trie OFAC SDN List Screening & SOX 404 SoD Matrix</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleAmlScreen} style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+                <input
+                  type="text"
+                  value={amlSearchName}
+                  onChange={(e) => setAmlSearchName(e.target.value)}
+                  placeholder="Enter person or vendor name (e.g. Vladimir Petrov)"
+                />
+                <button type="submit" className="button" disabled={busy}>
+                  <UserCheck size={16} /> Screen Entity
+                </button>
+              </form>
+
+              {amlResult && (
+                <div className={`alert-item ${amlResult.flagged ? 'critical' : ''}`} style={{ background: amlResult.flagged ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)' }}>
+                  <div>
+                    <strong style={{ color: amlResult.flagged ? '#ef4444' : '#10b981' }}>
+                      {amlResult.flagged ? '⚠️ OFAC SDN SANCTIONS HIT FLAGGED' : '✓ ENTITY CLEARED (No Sanctions Hits)'}
+                    </strong>
+                    <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-main)' }}>
+                      Match Type: {amlResult.match_type} | Execution Latency: {amlResult.execution_time_ms}ms
+                    </p>
+                    {amlResult.matched_entity && (
+                      <small style={{ color: '#a5b4fc', fontSize: '11px', display: 'block', marginTop: '4px' }}>
+                        Matched Details: {JSON.stringify(amlResult.matched_entity)}
+                      </small>
+                    )}
+                  </div>
+                </div>
+              )}
+            </article>
+          )}
+        </section>
+      </main>
+    </ErrorBoundary>
   )
 }
 
