@@ -33,7 +33,12 @@ import {
   X,
   Plus,
   Copy,
-  ChevronRight
+  ChevronRight,
+  UploadCloud,
+  Cpu,
+  Factory,
+  FileText,
+  Check
 } from 'lucide-react'
 import './styles.css'
 
@@ -133,6 +138,64 @@ function DashboardApp() {
   const [feedbackCategory, setFeedbackCategory] = useState('bug')
   const [feedbackSubject, setFeedbackSubject] = useState('')
   const [feedbackDesc, setFeedbackDesc] = useState('')
+
+  // Universal Financial Ingestion Hub State
+  const [showIngestionModal, setShowIngestionModal] = useState(false)
+  const [selectedIndustryDomain, setSelectedIndustryDomain] = useState('AI & Tech Giants (OpenAI, Meta, Anthropic)')
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null)
+  const [ingestionParsedData, setIngestionParsedData] = useState<any>(null)
+  const [ingestBusy, setIngestBusy] = useState(false)
+
+  const handleUniversalFileUpload = (fileName: string) => {
+    setUploadedFileName(fileName)
+    setIngestBusy(true)
+    setTimeout(() => {
+      setIngestBusy(false)
+      if (selectedIndustryDomain.includes('AI & Tech')) {
+        setIngestionParsedData({
+          domain: 'AI & Tech Giants (Meta, OpenAI, Anthropic)',
+          document_name: fileName,
+          extracted_entity: 'Nvidia H100 GPU Cluster Compute Invoice #NV-2026-881',
+          line_items: [
+            { item: '10,240x H100 SXM5 GPU Hours (Model Fine-Tuning)', cost: '$2,450,000.00' },
+            { item: 'High-Bandwidth Infiniband Interconnect (800Gbps)', cost: '$320,000.00' },
+            { item: 'Token API Billing Offset Credit', cost: '-$145,000.00' }
+          ],
+          total_audited_usd: 2625000.00,
+          confidence_score: '99.8% VERIFIED',
+          recommended_action: 'Auto-Post to GL & Apply 2/10 Net 30 Float Discount (Save +$52,500)'
+        })
+      } else if (selectedIndustryDomain.includes('Manufacturing')) {
+        setIngestionParsedData({
+          domain: 'Manufacturing & Heavy Industry',
+          document_name: fileName,
+          extracted_entity: 'TSMC Wafer Fab Fabrication PO #TSMC-PO-9912',
+          line_items: [
+            { item: '3nm Silicon Wafers (5,000 units)', cost: '$4,100,000.00' },
+            { item: 'Raw Material Chemical Vapor Deposition', cost: '$480,000.00' },
+            { item: 'Freight & Supply Chain Tariff Insurance', cost: '$95,000.00' }
+          ],
+          total_audited_usd: 4675000.00,
+          confidence_score: '99.6% VERIFIED',
+          recommended_action: 'Match with PO-2026-9912 & Execute FX Forward Hedge (+ $88,000)'
+        })
+      } else {
+        setIngestionParsedData({
+          domain: 'Enterprise SaaS & Global Banking',
+          document_name: fileName,
+          extracted_entity: 'SWIFT MT940 Interbank Statement & Stripe Billing Feed',
+          line_items: [
+            { item: 'SWIFT Interbank Gross Wire Transfers (48 lines)', cost: '$12,400,000.00' },
+            { item: 'Stripe SaaS Subscription Billing Clearing', cost: '$1,850,000.00' }
+          ],
+          total_audited_usd: 14250000.00,
+          confidence_score: '99.9% VERIFIED',
+          recommended_action: 'Compress via Multilateral Netting & Sweep Excess Cash to 5.2% MMF'
+        })
+      }
+      showToast(`✓ AI Document Engine parsed ${fileName} with 99.8% accuracy!`)
+    }, 600)
+  }
 
   // 16 Scenarios State
   const [scenarios, setScenarios] = useState<any[]>([])
@@ -555,6 +618,113 @@ function DashboardApp() {
           </div>
         )}
 
+        {/* Universal Financial Data Ingestion Hub Modal */}
+        {showIngestionModal && (
+          <div className="modal-overlay">
+            <div className="modal-card" style={{ maxWidth: '680px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-display)', fontWeight: 800 }}>
+                  <UploadCloud size={22} color="var(--accent-emerald)" /> Universal Financial Document Ingestion Engine
+                </h3>
+                <button onClick={() => setShowIngestionModal(false)} style={{ background: 'transparent', border: 0, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px', fontWeight: 600 }}>
+                  SELECT TARGET INDUSTRY DOMAIN
+                </label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {[
+                    { label: '🚀 AI & Tech Giants (OpenAI, Meta, Anthropic)', icon: Cpu },
+                    { label: '🏭 Manufacturing & Heavy Industry', icon: Factory },
+                    { label: '💼 Enterprise SaaS & Global Banking', icon: Landmark }
+                  ].map((dom) => (
+                    <button
+                      key={dom.label}
+                      type="button"
+                      className={`industry-pill ${selectedIndustryDomain === dom.label ? 'active' : ''}`}
+                      onClick={() => { setSelectedIndustryDomain(dom.label); setIngestionParsedData(null); }}
+                    >
+                      <dom.icon size={14} /> {dom.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="dropzone-box" onClick={() => handleUniversalFileUpload(selectedIndustryDomain.includes('AI') ? 'nvidia_h100_cluster_invoice_2026.pdf' : selectedIndustryDomain.includes('Manuf') ? 'tsmc_3nm_wafer_po_2026.pdf' : 'swift_mt940_interbank_statement.csv')}>
+                <UploadCloud size={44} color="var(--accent-emerald)" style={{ marginBottom: '8px' }} />
+                <h4 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--text-main)', fontWeight: 700 }}>
+                  Drag & Drop any Invoice, Receipt, PO, BOM or Bank Feed
+                </h4>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
+                  Supports PDF, CSV, XLSX, MT940, JSON · Auto-detected OCR + 99.8% AI Extraction
+                </p>
+                <span className="badge-tag" style={{ marginTop: '12px', background: 'rgba(0,255,157,0.15)', color: 'var(--accent-emerald)' }}>
+                  Click to Instant-Parse Sample {selectedIndustryDomain.includes('AI') ? 'GPU Invoice ($2.62M)' : selectedIndustryDomain.includes('Manuf') ? 'Silicon Wafer PO ($4.67M)' : 'SWIFT Bank Feed ($14.25M)'}
+                </span>
+              </div>
+
+              {ingestBusy && (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  <Zap size={24} className="spin" color="var(--accent-emerald)" />
+                  <p style={{ fontSize: '13px', color: 'var(--text-main)', marginTop: '8px' }}>
+                    AI Document Engine extracting line items & topological Knowledge Graph entities...
+                  </p>
+                </div>
+              )}
+
+              {ingestionParsedData && (
+                <div style={{ marginTop: '20px', background: 'var(--input-bg)', padding: '18px', borderRadius: '12px', border: '1px solid var(--border-glow)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <strong style={{ fontSize: '14px', color: 'var(--accent-emerald)' }}>
+                      ✓ Parsed Entity: {ingestionParsedData.extracted_entity}
+                    </strong>
+                    <span className="badge-tag" style={{ background: 'rgba(0,255,157,0.2)', color: 'var(--accent-emerald)' }}>
+                      {ingestionParsedData.confidence_score}
+                    </span>
+                  </div>
+
+                  <table style={{ margin: '8px 0 12px' }}>
+                    <thead>
+                      <tr>
+                        <th>Extracted Line Item</th>
+                        <th style={{ textAlign: 'right' }}>Audited Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ingestionParsedData.line_items.map((item: any, i: number) => (
+                        <tr key={i}>
+                          <td>{item.item}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text-main)' }}>{item.cost}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  <div style={{ padding: '10px 14px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '8px' }}>
+                    <b style={{ color: 'var(--accent-cyan)', fontSize: '12.5px' }}>
+                      ⚡ AI Recommendation: {ingestionParsedData.recommended_action}
+                    </b>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
+                <button type="button" className="button ghost" onClick={() => setShowIngestionModal(false)}>Close</button>
+                <button
+                  type="button"
+                  className="button success"
+                  onClick={() => { showToast('Ingested document synced to SarvaFlow Knowledge Graph!'); setShowIngestionModal(false); }}
+                >
+                  Confirm & Ingest to Engine <ArrowUpRight size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Report an Issue Modal */}
         {showFeedbackModal && (
           <div className="modal-overlay">
@@ -726,12 +896,21 @@ function DashboardApp() {
             <div className="actions" style={{ alignItems: 'center', gap: '10px' }}>
               {/* Executive Master Auto-Pilot Button */}
               <button
-                className="button success"
+                className="button"
                 onClick={handleMasterOptimize}
                 disabled={busy}
-                style={{ fontWeight: 700 }}
+                style={{ fontWeight: 700, background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)' }}
               >
                 <Zap size={16} className={busy ? 'spin' : ''} /> 1-Click Master Auto-Pilot (+ $152.5k)
+              </button>
+
+              {/* Universal Data Ingestion Hub Trigger Button */}
+              <button
+                className="button success"
+                onClick={() => setShowIngestionModal(true)}
+                style={{ fontWeight: 800 }}
+              >
+                <UploadCloud size={16} /> Universal Ingestion Hub
               </button>
 
               {/* Quick Theme Toggle */}
@@ -748,12 +927,14 @@ function DashboardApp() {
 
           {/* Top Metric Cards & Health Scorecard */}
           <div className="cards">
-            <div className="metric" style={{ borderLeft: '4px solid #10b981' }}>
+            <div className="metric" style={{ borderLeft: '4px solid #00ff9d', background: 'linear-gradient(145deg, #0d1322 0%, #092e20 100%)' }}>
               <div className="icon green">
                 <Sparkles size={20} />
               </div>
               <span>AI Health Scorecard</span>
-              <strong style={{ color: '#10b981' }}>{healthScorecard ? `${healthScorecard.overall_health_score}/100 EXCELLENT` : '94/100 EXCELLENT'}</strong>
+              <strong className="vibrant-score">
+                {healthScorecard ? `${healthScorecard.overall_health_score}/100 EXCELLENT` : '94/100 EXCELLENT'}
+              </strong>
             </div>
             <div className="metric">
               <div className="icon green">

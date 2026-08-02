@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
   --bg-app: #060911;
@@ -10,9 +10,11 @@
   --accent-primary: #6366f1;
   --accent-hover: #4f46e5;
   --accent-success: #10b981;
+  --accent-emerald: #00ff9d;
+  --accent-gold: #ffb703;
   --accent-warning: #f59e0b;
   --accent-danger: #ef4444;
-  --accent-cyan: #06b6d4;
+  --accent-cyan: #00f0ff;
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
@@ -41,6 +43,7 @@
   --input-bg: #f1f5f9;
   --input-border: rgba(0, 0, 0, 0.15);
   --shadow-elevated: 0 10px 25px -5px rgba(0, 0, 0, 0.06);
+  --accent-emerald: #059669;
 }
 
 * { box-sizing: border-box; }
@@ -61,17 +64,17 @@ body {
 
 /* Top Pilot Banner */
 .pilot-banner {
-  background: linear-gradient(90deg, #4f46e5 0%, #0891b2 100%);
-  color: #ffffff;
+  background: linear-gradient(90deg, #4f46e5 0%, #00f0ff 50%, #00ff9d 100%);
+  color: #060911;
   padding: 8px 24px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   text-align: center;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 20px rgba(0, 255, 157, 0.3);
   letter-spacing: 0.01em;
 }
 
@@ -109,12 +112,12 @@ aside {
   gap: 12px;
   color: var(--text-main);
   font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 22px;
+  font-weight: 900;
+  font-size: 24px;
   padding: 0 8px 24px;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
-.brand svg { color: var(--accent-primary); filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.4)); }
+.brand svg { color: var(--accent-emerald); filter: drop-shadow(0 0 10px rgba(0, 255, 157, 0.6)); }
 
 nav { display: grid; gap: 4px; }
 nav a {
@@ -136,10 +139,11 @@ nav a:hover {
   transform: translateX(2px);
 }
 nav a.active {
-  background: linear-gradient(90deg, rgba(99, 102, 241, 0.2) 0%, rgba(99, 102, 241, 0.05) 100%);
-  color: var(--accent-primary);
-  font-weight: 600;
-  border-left: 3.5px solid var(--accent-primary);
+  background: linear-gradient(90deg, rgba(0, 255, 157, 0.15) 0%, rgba(99, 102, 241, 0.05) 100%);
+  color: var(--accent-emerald);
+  font-weight: 700;
+  border-left: 3.5px solid var(--accent-emerald);
+  text-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
 }
 
 .org {
@@ -171,18 +175,18 @@ header {
   color: var(--accent-cyan);
   font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   margin: 0 0 6px;
 }
 h1 {
   font-family: var(--font-display);
-  font-size: 28px;
-  font-weight: 800;
+  font-size: 30px;
+  font-weight: 900;
   margin: 0;
   color: var(--text-main);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 .sub { color: var(--text-muted); font-size: 14px; margin: 4px 0 0; }
 
@@ -216,10 +220,25 @@ h1 {
 }
 .button.ghost:hover { background: var(--card-hover); border-color: var(--accent-primary); }
 .button.success {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+  background: linear-gradient(135deg, #00ff9d 0%, #059669 100%);
+  color: #060911;
+  font-weight: 800;
+  box-shadow: 0 2px 14px rgba(0, 255, 157, 0.4);
 }
-.button.success:hover { background: #059669; transform: translateY(-1px); }
+.button.success:hover { background: #00ff9d; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0, 255, 157, 0.6); }
+
+/* Vibrant Score Typography (Fixes User Uploaded Image) */
+.vibrant-score {
+  color: var(--accent-emerald) !important;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 26px;
+  letter-spacing: -0.03em;
+  text-shadow: 0 0 16px rgba(0, 255, 157, 0.5);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
 
 /* Metric Cards Grid */
 .cards {
@@ -253,7 +272,7 @@ h1 {
   background: rgba(99, 102, 241, 0.15);
   color: var(--accent-primary);
 }
-.icon.green { background: rgba(16, 185, 129, 0.15); color: var(--accent-success); }
+.icon.green { background: rgba(0, 255, 157, 0.15); color: var(--accent-emerald); }
 .icon.red { background: rgba(239, 68, 68, 0.15); color: var(--accent-danger); }
 .icon.amber { background: rgba(245, 158, 11, 0.15); color: var(--accent-warning); }
 
@@ -279,7 +298,7 @@ h1 {
 }
 .panelhead h2 { margin: 0; font-size: 18px; font-family: var(--font-display); font-weight: 700; color: var(--text-main); letter-spacing: -0.01em; }
 .panelhead p { margin: 4px 0 0; font-size: 13px; color: var(--text-muted); }
-.panelhead b { font-size: 22px; font-family: var(--font-display); color: var(--accent-success); font-weight: 800; }
+.panelhead b { font-size: 22px; font-family: var(--font-display); color: var(--accent-emerald); font-weight: 900; }
 
 /* AI CFO Copilot Card Special Styling */
 .ai-card {
@@ -309,20 +328,20 @@ h1 {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: rgba(99, 102, 241, 0.12);
-  color: var(--accent-primary);
-  border: 1px solid rgba(99, 102, 241, 0.25);
+  background: rgba(0, 255, 157, 0.12);
+  color: var(--accent-emerald);
+  border: 1px solid rgba(0, 255, 157, 0.3);
   padding: 4px 10px;
   border-radius: 8px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
 }
 .live-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--accent-success);
-  box-shadow: 0 0 8px var(--accent-success);
+  background: var(--accent-emerald);
+  box-shadow: 0 0 10px var(--accent-emerald);
   display: inline-block;
 }
 
@@ -370,12 +389,50 @@ h1 {
   border: 1px solid var(--border-glass);
 }
 
+/* Universal Ingestion Dropzone & Industry Selector */
+.dropzone-box {
+  border: 2px dashed rgba(0, 255, 157, 0.4);
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 14px;
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.dropzone-box:hover {
+  border-color: var(--accent-emerald);
+  background: rgba(0, 255, 157, 0.06);
+  box-shadow: 0 0 24px rgba(0, 255, 157, 0.25);
+  transform: translateY(-2px);
+}
+
+.industry-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid var(--border-glass);
+  background: var(--input-bg);
+  color: var(--text-muted);
+}
+.industry-pill:hover, .industry-pill.active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(0, 255, 157, 0.15) 100%);
+  border-color: var(--accent-emerald);
+  color: var(--accent-emerald);
+  box-shadow: 0 0 12px rgba(0, 255, 157, 0.2);
+}
+
 /* Modals */
 .modal-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
   display: grid;
   place-items: center;
   z-index: 9999;
@@ -383,11 +440,11 @@ h1 {
 .modal-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-glass);
-  border-radius: 16px;
+  border-radius: 18px;
   width: 100%;
-  max-width: 540px;
+  max-width: 620px;
   padding: 28px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
 }
 
 /* Forms */
@@ -404,8 +461,8 @@ input, select, textarea {
 }
 input:focus, select:focus, textarea:focus {
   outline: none;
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  border-color: var(--accent-emerald);
+  box-shadow: 0 0 0 3px rgba(0, 255, 157, 0.2);
 }
 
 /* Tables */
