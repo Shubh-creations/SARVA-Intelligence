@@ -214,29 +214,43 @@ function DashboardApp() {
       const healthRes = await fetch(`${API}/api/v1/health`)
       setServerOnline(healthRes.ok)
 
-      const forecastRes = await fetch(`${API}/api/v1/forecasting/90-day?tenant_id=${TENANT_ID}&current_balance=42500000.0`)
-      if (forecastRes.ok) {
-        setForecastData(await forecastRes.json())
-      }
-
-      const recsRes = await fetch(`${API}/api/v1/recommendations/?tenant_id=${TENANT_ID}`)
-      if (recsRes.ok) {
-        setRecommendations(await recsRes.json())
-      }
-
-      const dupRes = await fetch(`${API}/api/v1/monitoring/check-duplicates?tenant_id=${TENANT_ID}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          new_bills: [{ vendor_name: 'Acme Supplies', bill_number: 'INV-2026-9912', total_amount: 185000.0 }],
-          existing_bills: [{ vendor_name: 'Acme Supplies', bill_number: 'INV-2026-9912', bill_date: '2026-07-20' }]
+      try {
+        const forecastRes = await fetch(`${API}/api/v1/forecasting/90-day?tenant_id=${TENANT_ID}&current_balance=42500000.0`, {
+          method: 'POST'
         })
-      })
-      if (dupRes.ok) {
-        setAlerts(await dupRes.json())
+        if (forecastRes.ok) {
+          setForecastData(await forecastRes.json())
+        }
+      } catch (e) {
+        console.warn('Forecast endpoint warning', e)
+      }
+
+      try {
+        const recsRes = await fetch(`${API}/api/v1/recommendations/?tenant_id=${TENANT_ID}`)
+        if (recsRes.ok) {
+          setRecommendations(await recsRes.json())
+        }
+      } catch (e) {
+        console.warn('Recommendations endpoint warning', e)
+      }
+
+      try {
+        const dupRes = await fetch(`${API}/api/v1/monitoring/check-duplicates?tenant_id=${TENANT_ID}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            new_bills: [{ vendor_name: 'Acme Supplies', bill_number: 'INV-2026-9912', total_amount: 185000.0 }],
+            existing_bills: [{ vendor_name: 'Acme Supplies', bill_number: 'INV-2026-9912', bill_date: '2026-07-20' }]
+          })
+        })
+        if (dupRes.ok) {
+          setAlerts(await dupRes.json())
+        }
+      } catch (e) {
+        console.warn('Duplicate monitoring endpoint warning', e)
       }
     } catch (err) {
-      console.error('Failed to connect to backend', err)
+      console.error('Failed to connect to backend health check', err)
       setServerOnline(false)
     } finally {
       setBusy(false)
