@@ -101,9 +101,16 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   }
 }
 
-// Telemetry Event Tracker Stub
+// Telemetry & Funnel Event Tracker
+const trackFunnelEvent = (eventName: 'signup' | 'bank_connect' | 'forecast_viewed' | 'export_clicked' | string, data?: any) => {
+  console.log(`[PostHog Funnel Telemetry] Event: ${eventName}`, data || {})
+  if ((window as any).posthog) {
+    (window as any).posthog.capture(eventName, data)
+  }
+}
+
 const trackEvent = (eventName: string, data?: any) => {
-  console.log(`[Telemetry] Event: ${eventName}`, data || {})
+  trackFunnelEvent(eventName, data)
 }
 
 function DashboardApp() {
@@ -174,8 +181,12 @@ function DashboardApp() {
   ])
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-  }, [theme])
+    // System preference default theme check (Block 4)
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+    const initialTheme = prefersDark ? 'dark' : 'light'
+    setTheme(initialTheme)
+    document.documentElement.setAttribute('data-theme', initialTheme)
+  }, [])
 
   useEffect(() => {
     loadDashboardData()
@@ -1411,6 +1422,11 @@ function DashboardApp() {
             </article>
           )}
         </section>
+
+        {/* Persistent Pilot Footer Note (Block 1) */}
+        <footer className="pilot-footer">
+          Active pilot &mdash; advanced compliance, wire clearing, and scorecard modules are demo implementations pending certification.
+        </footer>
       </main>
     </ErrorBoundary>
   )
